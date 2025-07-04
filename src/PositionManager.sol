@@ -5,17 +5,24 @@ import {IPositionManager} from "./interfaces/IPositionManager.sol";
 import {ERC721} from "./base/ERC721.sol";
 import {PositionManagerConfig} from "./PositionManagerConfig.sol";
 import {PositionInfo, PositionInfoLibrary} from "./types/PositionInfo.sol";
+import {ActionsData, Actions} from "./types/Actions.sol";
+import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
 import {LicredityDispatcher} from "./libraries/LicredityDispatcher.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
+import {IUnlockCallback} from "@uniswap-v4-core/interfaces/callback/IUnlockCallback.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
-contract PositionManager is IPositionManager, ERC721, PositionManagerConfig {
+contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionManagerConfig {
+    using CalldataDecoder for bytes;
     using LicredityDispatcher for ILicredity;
 
     IPoolManager public immutable uniswapV4PoolManager;
 
     address transient lockedBy;
+    ILicredity transient usingLicredity;
+    uint256 transient usingLicredityPositionId;
+
     uint256 public nextTokenId = 1;
 
     mapping(uint256 tokenId => PositionInfo info) internal positionInfo;
@@ -44,6 +51,11 @@ contract PositionManager is IPositionManager, ERC721, PositionManagerConfig {
         _;
     }
 
+    modifier onlyIfApproved(address caller, uint256 tokenId) {
+        require(_isApprovedOrOwner(caller, tokenId), NotApproved(caller));
+        _;
+    }
+
     function msgSender() internal view returns (address) {
         return lockedBy;
     }
@@ -60,14 +72,15 @@ contract PositionManager is IPositionManager, ERC721, PositionManagerConfig {
         positionInfo[tokenId] = PositionInfoLibrary.from(address(pool), positionId);
     }
 
-    function burn(uint256 tokenId) external {
+    function burn(uint256 tokenId) external onlyIfApproved(msg.sender, tokenId) {
         PositionInfo info = positionInfo[tokenId];
         ILicredity pool = ILicredity(info.pool());
 
+        _burn(tokenId);
         pool.close(info.positionId());
     }
 
-    function depositFungible(uint256 tokenId, IERC20 token, uint256 amount) external {
+    function depositFungible(uint256 tokenId, address token, uint256 amount) external payable {
         PositionInfo info = positionInfo[tokenId];
         info.pool().depositFungible(info.positionId(), msg.sender, token, amount);
     }
@@ -77,10 +90,80 @@ contract PositionManager is IPositionManager, ERC721, PositionManagerConfig {
         info.pool().depositNonFungible(info.positionId(), msg.sender, token, depsoittTokenId);
     }
 
-    function execute(bytes calldata commands, bytes[] calldata inputs, uint256 deadline)
+    function execute(ActionsData[] calldata inputs, uint256 deadline)
         external
         payable
         isNotLocked
         checkDeadline(deadline)
-    {}
+    {
+        for (uint256 i = 0; i < inputs.length; i++) {
+            ActionsData calldata input = inputs[i];
+            if (input.tokenId != 0) {
+                require(_isApprovedOrOwner(msgSender(), input.tokenId), NotApproved(msgSender()));
+                usingLicredity = positionInfo[input.tokenId].pool();
+                usingLicredityPositionId = positionInfo[input.tokenId].positionId();
+
+                usingLicredity.unlock(input.unlockData);
+            } else {
+                uniswapV4PoolManager.unlock(input.unlockData);
+            }
+        }
+    }
+
+    function unlockCallback(bytes calldata data) external returns (bytes memory) {
+        (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
+        uint256 numActions = actions.length;
+        require(numActions == params.length, InputLengthMismatch());
+        if (msg.sender == address(uniswapV4PoolManager)) {
+            // for (uint256 actionIndex = 0; actionIndex < numActions; actionIndex++) {
+            //     uint256 action = uint8(actions[actionIndex]);
+
+            //     _handleUniswapV4Action(action, params[actionIndex]);
+            // }
+        } else {
+            for (uint256 actionIndex = 0; actionIndex < numActions; actionIndex++) {
+                uint256 action = uint8(actions[actionIndex]);
+
+                _handleLicredityAction(action, params[actionIndex]);
+            }
+        }
+
+        return "";
+    }
+
+    function _handleLicredityAction(uint256 action, bytes calldata params) internal {
+        if (action == Actions.DEPOSIT_FUNGIBLE) {
+            (address payer, address token, uint256 amount) = params.decodeDeposit();
+            usingLicredity.depositFungible(usingLicredityPositionId, payer, token, amount);
+        } else if (action == Actions.DEPOSIT_NON_FUNGIBLE) {
+            (address payer, address token, uint256 tokenId) = params.decodeDeposit();
+            usingLicredity.depositNonFungible(usingLicredityPositionId, payer, token, tokenId);
+        } else if (action == Actions.WITHDRAW_FUNGIBLE) {
+            (address recipient, address token, uint256 amount) = params.decodeWithdraw();
+            usingLicredity.withdrawFungible(usingLicredityPositionId, recipient, token, amount);
+        } else if (action == Actions.WITHDRAW_NON_FUNGIBLE) {
+            (address recipient, address token, uint256 tokenId) = params.decodeWithdraw();
+            usingLicredity.withdrawNonFungible(usingLicredityPositionId, recipient, token, tokenId);
+        } else if (action == Actions.INCREASE_DEBT_AMOUNT) {
+            (address recipient, uint256 amount) = params.decodeIncreaseDebt();
+            usingLicredity.increaseDebtAmount(usingLicredityPositionId, recipient, amount);
+        } else if (action == Actions.INCREASE_DEBT_SHARE) {
+            (address recipient, uint256 shares) = params.decodeIncreaseDebt();
+            usingLicredity.increaseDebtShare(usingLicredityPositionId, recipient, shares);
+        } else if (action == Actions.DECREASE_DEBT_AMOUNT) {
+            (address payer, uint256 amount, bool useBalance) = params.decodeDecreaseDebt();
+            usingLicredity.decreaseDebtAmount(usingLicredityPositionId, payer, amount, useBalance);
+        } else if (action == Actions.DECREASE_DEBT_SHARE) {
+            (address payer, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
+            usingLicredity.decreaseDebtShare(usingLicredityPositionId, payer, shares, useBalance);
+        } else if (action == Actions.SEIZE) {
+            uint256 seizedTokenId = params.decodeSeizeTokenId();
+            uint256 seizedPositionId = positionInfo[seizedTokenId].positionId();
+
+            usingLicredity.seize(seizedPositionId);
+            usingLicredityPositionId = seizedPositionId;
+
+            _transfer(msgSender(), seizedTokenId);
+        }
+    }
 }

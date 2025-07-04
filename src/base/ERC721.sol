@@ -96,6 +96,22 @@ abstract contract ERC721 {
         return spender == owner || isApprovedForAll[owner][spender] || getApproved[id] == spender;
     }
 
+    function _transfer(address to, uint256 id) internal {
+        address from = _ownerOf[id];
+
+        unchecked {
+            _balanceOf[from]--;
+
+            _balanceOf[to]++;
+        }
+
+        _ownerOf[id] = to;
+
+        delete getApproved[id];
+
+        emit Transfer(from, to, id);
+    }
+
     function transferFrom(address from, address to, uint256 id) public {
         require(from == _ownerOf[id], WrongFrom());
 
