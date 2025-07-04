@@ -110,7 +110,7 @@ library LicredityDispatcher {
 
     function _pay(address token, address payer, address recipient, uint256 amount) internal {
         Fungible fungible = Fungible.wrap(token);
-        if (fungible.isNative()) {
+        if (fungible.isNative() || payer == address(this)) {
             fungible.transfer(recipient, amount);
         } else {
             IERC20(token).transferFrom(payer, recipient, amount);

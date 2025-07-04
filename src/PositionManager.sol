@@ -135,27 +135,38 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
         if (action == Actions.DEPOSIT_FUNGIBLE) {
             (address payer, address token, uint256 amount) = params.decodeDeposit();
             usingLicredity.depositFungible(usingLicredityPositionId, payer, token, amount);
+
+            return;
         } else if (action == Actions.DEPOSIT_NON_FUNGIBLE) {
             (address payer, address token, uint256 tokenId) = params.decodeDeposit();
             usingLicredity.depositNonFungible(usingLicredityPositionId, payer, token, tokenId);
+
+            return;
         } else if (action == Actions.WITHDRAW_FUNGIBLE) {
             (address recipient, address token, uint256 amount) = params.decodeWithdraw();
             usingLicredity.withdrawFungible(usingLicredityPositionId, recipient, token, amount);
+
+            return;
         } else if (action == Actions.WITHDRAW_NON_FUNGIBLE) {
             (address recipient, address token, uint256 tokenId) = params.decodeWithdraw();
             usingLicredity.withdrawNonFungible(usingLicredityPositionId, recipient, token, tokenId);
+            return;
         } else if (action == Actions.INCREASE_DEBT_AMOUNT) {
             (address recipient, uint256 amount) = params.decodeIncreaseDebt();
             usingLicredity.increaseDebtAmount(usingLicredityPositionId, recipient, amount);
+            return;
         } else if (action == Actions.INCREASE_DEBT_SHARE) {
             (address recipient, uint256 shares) = params.decodeIncreaseDebt();
             usingLicredity.increaseDebtShare(usingLicredityPositionId, recipient, shares);
+            return;
         } else if (action == Actions.DECREASE_DEBT_AMOUNT) {
             (address payer, uint256 amount, bool useBalance) = params.decodeDecreaseDebt();
             usingLicredity.decreaseDebtAmount(usingLicredityPositionId, payer, amount, useBalance);
+            return;
         } else if (action == Actions.DECREASE_DEBT_SHARE) {
             (address payer, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
             usingLicredity.decreaseDebtShare(usingLicredityPositionId, payer, shares, useBalance);
+            return;
         } else if (action == Actions.SEIZE) {
             uint256 seizedTokenId = params.decodeSeizeTokenId();
             uint256 seizedPositionId = positionInfo[seizedTokenId].positionId();
@@ -164,6 +175,7 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
             usingLicredityPositionId = seizedPositionId;
 
             _transfer(msgSender(), seizedTokenId);
+            return;
         }
     }
 }
