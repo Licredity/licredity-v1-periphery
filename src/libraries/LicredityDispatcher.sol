@@ -13,11 +13,11 @@ library LicredityDispatcher {
     using FullMath for uint256;
     using LicredityStateView for ILicredity;
 
-    function depositFungible(ILicredity licredity, uint256 positionId, address payer, IERC20 token, uint256 amount)
+    function depositFungible(ILicredity licredity, uint256 positionId, address payer, address token, uint256 amount)
         internal
     {
         licredity.stageFungible(Fungible.wrap(address(token)));
-        token.transferFrom(payer, address(licredity), amount);
+        _pay(token, payer, address(licredity), amount);
         licredity.depositFungible(positionId);
     }
 
@@ -82,7 +82,7 @@ library LicredityDispatcher {
             licredity.decreaseDebtShare(positionId, shareDelta, true);
         } else {
             // amount + 1 to avoid underflow in licredity
-            IERC20(address(licredity)).transferFrom(payer, address(this), amount + 1);
+            _pay(address(licredity), payer, address(this), amount + 1);
             licredity.decreaseDebtShare(positionId, shareDelta, false);
         }
     }
@@ -98,7 +98,7 @@ library LicredityDispatcher {
             licredity.decreaseDebtShare(positionId, delta, true);
         } else {
             // amount + 1 to avoid underflow in licredity
-            IERC20(address(licredity)).transferFrom(payer, address(this), amount + 1);
+            _pay(address(licredity), payer, address(this), amount + 1);
             licredity.decreaseDebtShare(positionId, delta, false);
         }
     }
@@ -106,5 +106,14 @@ library LicredityDispatcher {
     /// @dev seize with nft owner transfer
     function seize(ILicredity licredity, uint256 positionId) internal {
         licredity.seize(positionId, address(this));
+    }
+
+    function _pay(address token, address payer, address recipient, uint256 amount) internal {
+        Fungible fungible = Fungible.wrap(token);
+        if (fungible.isNative()) {
+            fungible.transfer(recipient, amount);
+        } else {
+            IERC20(token).transferFrom(payer, recipient, amount);
+        }
     }
 }
