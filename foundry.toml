@@ -5,6 +5,7 @@ libs = ["dependencies"]
 remappings = [
     "@forge-std/=dependencies/forge-std-1.9.7/src",
     "@licredity-v1-core/=dependencies/licredity-v1-core-0.9.0/src",
+    "@licredity-v1-test/=dependencies/licredity-v1-core-0.9.0/test",
     "@uniswap-v4-core/=dependencies/uniswap-v4-core-4/src"
 ]
 
@@ -13,4 +14,6 @@ forge-std = "1.9.7"
 licredity-v1-core = "0.9.0"
 uniswap-v4-core = "4"
 
+[rpc_endpoints]
+ETH = "${ETH_RPC_URL}"
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

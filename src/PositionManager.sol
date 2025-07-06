@@ -182,17 +182,19 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
                 let fmp := mload(0x40)
                 let target := calldataload(params.offset)
                 let value := calldataload(add(params.offset, 0x20))
-                let dataLen := calldataload(add(params.offset, 0x40))
+                let dataLen := calldataload(add(params.offset, 0x60))
 
-                calldatacopy(fmp, add(params.offset, 0x40), dataLen)
+                calldatacopy(fmp, add(params.offset, 0x80), dataLen)
 
                 let success := call(gas(), target, value, fmp, dataLen, 0x00, 0x00)
 
                 if iszero(success) {
-                    mstore(0x00, 0x66144e77) // `DynCallFailed()`
+                    mstore(0x00, 0x674ac132) // `CallFailure()`
                     revert(0x1c, 0x04)
                 }
             }
+
+            return;
         }
     }
 

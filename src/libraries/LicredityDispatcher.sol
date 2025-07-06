@@ -16,9 +16,13 @@ library LicredityDispatcher {
     function depositFungible(ILicredity licredity, uint256 positionId, address payer, address token, uint256 amount)
         internal
     {
-        licredity.stageFungible(Fungible.wrap(address(token)));
-        _pay(token, payer, address(licredity), amount);
-        licredity.depositFungible(positionId);
+        if (Fungible.wrap(address(token)).isNative()) {
+            licredity.depositFungible{value: amount}(positionId);
+        } else {
+            licredity.stageFungible(Fungible.wrap(address(token)));
+            IERC20(token).transferFrom(payer, address(licredity), amount);
+            licredity.depositFungible(positionId);
+        }
     }
 
     function getNonFungible(address token, uint256 tokenId) internal pure returns (NonFungible nft) {
@@ -81,8 +85,10 @@ library LicredityDispatcher {
         if (useBalance) {
             licredity.decreaseDebtShare(positionId, shareDelta, true);
         } else {
-            // amount + 1 to avoid underflow in licredity
-            _pay(address(licredity), payer, address(this), amount + 1);
+            if (payer != address(this)) {
+                IERC20(address(licredity)).transferFrom(payer, address(this), amount);
+            }
+
             licredity.decreaseDebtShare(positionId, shareDelta, false);
         }
     }
@@ -97,8 +103,10 @@ library LicredityDispatcher {
         if (useBalance) {
             licredity.decreaseDebtShare(positionId, delta, true);
         } else {
-            // amount + 1 to avoid underflow in licredity
-            _pay(address(licredity), payer, address(this), amount + 1);
+            if (payer != address(this)) {
+                IERC20(address(licredity)).transferFrom(payer, address(this), amount);
+            }
+
             licredity.decreaseDebtShare(positionId, delta, false);
         }
     }
@@ -106,14 +114,5 @@ library LicredityDispatcher {
     /// @dev seize with nft owner transfer
     function seize(ILicredity licredity, uint256 positionId) internal {
         licredity.seize(positionId, address(this));
-    }
-
-    function _pay(address token, address payer, address recipient, uint256 amount) internal {
-        Fungible fungible = Fungible.wrap(token);
-        if (fungible.isNative() || payer == address(this)) {
-            fungible.transfer(recipient, amount);
-        } else {
-            IERC20(token).transferFrom(payer, recipient, amount);
-        }
     }
 }
