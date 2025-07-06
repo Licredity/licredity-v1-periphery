@@ -63,13 +63,9 @@ library CalldataDecoder {
         }
     }
 
-    function decodeDeposit(bytes calldata params)
-        internal
-        pure
-        returns (address payer, address token, uint256 amount)
-    {
+    function decodeDeposit(bytes calldata params) internal pure returns (bool boolean, address token, uint256 amount) {
         assembly ("memory-safe") {
-            payer := calldataload(params.offset)
+            boolean := calldataload(params.offset)
             token := calldataload(add(params.offset, 0x20))
             amount := calldataload(add(params.offset, 0x40))
         }
@@ -97,10 +93,10 @@ library CalldataDecoder {
     function decodeDecreaseDebt(bytes calldata params)
         internal
         pure
-        returns (address payer, uint256 amount, bool useBalance)
+        returns (bool boolean, uint256 amount, bool useBalance)
     {
         assembly ("memory-safe") {
-            payer := calldataload(params.offset)
+            boolean := calldataload(params.offset)
             amount := calldataload(add(params.offset, 0x20))
             useBalance := calldataload(add(params.offset, 0x40))
         }

@@ -6,6 +6,7 @@ import {ERC721} from "./base/ERC721.sol";
 import {PositionManagerConfig} from "./PositionManagerConfig.sol";
 import {PositionInfo, PositionInfoLibrary} from "./types/PositionInfo.sol";
 import {ActionsData, Actions} from "./types/Actions.sol";
+import {ActionConstants} from "./libraries/ActionsConstants.sol";
 import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
 import {LicredityDispatcher} from "./libraries/LicredityDispatcher.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
@@ -133,39 +134,39 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
 
     function _handleLicredityAction(uint256 action, bytes calldata params) internal {
         if (action == Actions.DEPOSIT_FUNGIBLE) {
-            (address payer, address token, uint256 amount) = params.decodeDeposit();
-            usingLicredity.depositFungible(usingLicredityPositionId, payer, token, amount);
+            (bool payerIsUser, address token, uint256 amount) = params.decodeDeposit();
+            usingLicredity.depositFungible(usingLicredityPositionId, _mapPayer(payerIsUser), token, amount);
 
             return;
         } else if (action == Actions.DEPOSIT_NON_FUNGIBLE) {
-            (address payer, address token, uint256 tokenId) = params.decodeDeposit();
-            usingLicredity.depositNonFungible(usingLicredityPositionId, payer, token, tokenId);
+            (bool payerIsUser, address token, uint256 tokenId) = params.decodeDeposit();
+            usingLicredity.depositNonFungible(usingLicredityPositionId, _mapPayer(payerIsUser), token, tokenId);
 
             return;
         } else if (action == Actions.WITHDRAW_FUNGIBLE) {
             (address recipient, address token, uint256 amount) = params.decodeWithdraw();
-            usingLicredity.withdrawFungible(usingLicredityPositionId, recipient, token, amount);
+            usingLicredity.withdrawFungible(usingLicredityPositionId, _mapRecipient(recipient), token, amount);
 
             return;
         } else if (action == Actions.WITHDRAW_NON_FUNGIBLE) {
             (address recipient, address token, uint256 tokenId) = params.decodeWithdraw();
-            usingLicredity.withdrawNonFungible(usingLicredityPositionId, recipient, token, tokenId);
+            usingLicredity.withdrawNonFungible(usingLicredityPositionId, _mapRecipient(recipient), token, tokenId);
             return;
         } else if (action == Actions.INCREASE_DEBT_AMOUNT) {
             (address recipient, uint256 amount) = params.decodeIncreaseDebt();
-            usingLicredity.increaseDebtAmount(usingLicredityPositionId, recipient, amount);
+            usingLicredity.increaseDebtAmount(usingLicredityPositionId, _mapRecipient(recipient), amount);
             return;
         } else if (action == Actions.INCREASE_DEBT_SHARE) {
             (address recipient, uint256 shares) = params.decodeIncreaseDebt();
-            usingLicredity.increaseDebtShare(usingLicredityPositionId, recipient, shares);
+            usingLicredity.increaseDebtShare(usingLicredityPositionId, _mapRecipient(recipient), shares);
             return;
         } else if (action == Actions.DECREASE_DEBT_AMOUNT) {
-            (address payer, uint256 amount, bool useBalance) = params.decodeDecreaseDebt();
-            usingLicredity.decreaseDebtAmount(usingLicredityPositionId, payer, amount, useBalance);
+            (bool payerIsUser, uint256 amount, bool useBalance) = params.decodeDecreaseDebt();
+            usingLicredity.decreaseDebtAmount(usingLicredityPositionId, _mapPayer(payerIsUser), amount, useBalance);
             return;
         } else if (action == Actions.DECREASE_DEBT_SHARE) {
-            (address payer, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
-            usingLicredity.decreaseDebtShare(usingLicredityPositionId, payer, shares, useBalance);
+            (bool payerIsUser, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
+            usingLicredity.decreaseDebtShare(usingLicredityPositionId, _mapPayer(payerIsUser), shares, useBalance);
             return;
         } else if (action == Actions.SEIZE) {
             uint256 seizedTokenId = params.decodeSeizeTokenId();
@@ -176,6 +177,38 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
 
             _transfer(msgSender(), seizedTokenId);
             return;
+        } else if (action == Actions.DYN_CALL) {
+            assembly ("memory-safe") {
+                let fmp := mload(0x40)
+                let target := calldataload(params.offset)
+                let value := calldataload(add(params.offset, 0x20))
+                let dataLen := calldataload(add(params.offset, 0x40))
+
+                calldatacopy(fmp, add(params.offset, 0x40), dataLen)
+
+                let success := call(gas(), target, value, fmp, dataLen, 0x00, 0x00)
+
+                if iszero(success) {
+                    mstore(0x00, 0x66144e77) // `DynCallFailed()`
+                    revert(0x1c, 0x04)
+                }
+            }
         }
+    }
+
+    /// @notice Calculates the address for a action
+    function _mapRecipient(address recipient) internal view returns (address) {
+        if (recipient == ActionConstants.MSG_SENDER) {
+            return msgSender();
+        } else if (recipient == ActionConstants.ADDRESS_THIS) {
+            return address(this);
+        } else {
+            return recipient;
+        }
+    }
+
+    /// @notice Calculates the payer for an action
+    function _mapPayer(bool payerIsUser) internal view returns (address) {
+        return payerIsUser ? msgSender() : address(this);
     }
 }
