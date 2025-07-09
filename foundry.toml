@@ -4,14 +4,14 @@ out = "out"
 libs = ["dependencies"]
 remappings = [
     "@forge-std/=dependencies/forge-std-1.9.7/src",
-    "@licredity-v1-core/=dependencies/licredity-v1-core-0.9.0/src",
-    "@licredity-v1-test/=dependencies/licredity-v1-core-0.9.0/test",
+    "@licredity-v1-core/=dependencies/licredity-v1-core-1.0.0/src",
+    "@licredity-v1-test/=dependencies/licredity-v1-core-1.0.0/test",
     "@uniswap-v4-core/=dependencies/uniswap-v4-core-4/src"
 ]
 
 [dependencies]
 forge-std = "1.9.7"
-licredity-v1-core = "0.9.0"
+licredity-v1-core = "1.0.0"
 uniswap-v4-core = "4"
 
 [rpc_endpoints]

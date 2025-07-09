@@ -8,7 +8,7 @@ import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
 contract LicredityDispatcherTest is Test {
     function test_fuzz_getNonFungible(address token, uint64 id) public pure {
         NonFungible nft = LicredityDispatcher.getNonFungible(token, id);
-        assertEq(nft.token(), token);
-        assertEq(nft.id(), id);
+        assertEq(nft.tokenAddress(), token);
+        assertEq(nft.tokenId(), id);
     }
 }
