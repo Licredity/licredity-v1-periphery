@@ -43,8 +43,7 @@ library UniswapV4Dispatcher {
             let fmp := mload(0x40)
             mstore(fmp, MODIFIER_LIQUIDITY_SELECTOR)
 
-            let positionParamsLength :=
-                and(add(positionCalldata.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN)
+            let positionParamsLength := and(add(positionCalldata.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN)
 
             calldatacopy(add(fmp, 0x20), positionCalldata.offset, positionParamsLength)
 

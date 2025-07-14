@@ -47,19 +47,17 @@ contract UniswapV4DispatcherTest is Test {
         }
     }
 
-struct Plan {
-    bytes actions;
-    bytes[] params;
-}
+    struct Plan {
+        bytes actions;
+        bytes[] params;
+    }
 
-    function test_fuzz_positionManagerCall(uint256 value, bytes calldata actions, bytes[] calldata params)
-        public
-    {
+    function test_fuzz_positionManagerCall(uint256 value, bytes calldata actions, bytes[] calldata params) public {
         vm.assume(value < address(this).balance);
 
         vm.expectEmit(true, false, false, true);
         emit ModifierLiquidityWithoutUnlock(value, actions, params);
 
-        swapCaller.positionManagerCall{ value: value }(value, abi.encode(actions, params));
+        swapCaller.positionManagerCall{value: value}(value, abi.encode(actions, params));
     }
 }
