@@ -177,37 +177,10 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
             (bool payerIsUser, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
             usingLicredity.decreaseDebtShare(usingLicredityPositionId, _mapPayer(payerIsUser), shares, useBalance);
             return;
-        } else if (action == Actions.SEIZE) {
-            uint256 seizedTokenId = params.decodeSeizeTokenId();
-            uint256 seizedPositionId = positionInfo[seizedTokenId].positionId();
-
-            usingLicredity.seize(seizedPositionId);
-            usingLicredityPositionId = seizedPositionId;
-
-            _transfer(msgSender(), seizedTokenId);
-            return;
         } else if (action == Actions.UNISWAP_V4_CALL) {
             uniswapV4PoolManager.unlock(params);
+            return;
         }
-        // else if (action == Actions.DYN_CALL) {
-        //     assembly ("memory-safe") {
-        //         let fmp := mload(0x40)
-        //         let target := calldataload(params.offset)
-        //         let value := calldataload(add(params.offset, 0x20))
-        //         let dataLen := calldataload(add(params.offset, 0x60))
-
-        //         calldatacopy(fmp, add(params.offset, 0x80), dataLen)
-
-        //         let success := call(gas(), target, value, fmp, dataLen, 0x00, 0x00)
-
-        //         if iszero(success) {
-        //             mstore(0x00, 0x674ac132) // `CallFailure()`
-        //             revert(0x1c, 0x04)
-        //         }
-        //     }
-
-        //     return;
-        // }
     }
 
     /// @notice Calculates the address for a action
