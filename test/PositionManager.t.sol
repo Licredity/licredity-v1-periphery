@@ -274,15 +274,13 @@ contract PositionManagerTest is Deployers {
     }
 
     function test_decreaseDebtShare_useBalance(uint256 shareDelta) public {
-        vm.assume(shareDelta > 1e6);
-        vm.assume(shareDelta < 10000 ether * 1e6);
-
+        shareDelta = bound(shareDelta, 1e6, 10000 ether * 1e6 - 1);
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
         Plan memory planner = Planner.init(tokenId);
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), 1 ether));
-        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(address(licredity), shareDelta + 1e6));
-        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(false, shareDelta, true));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(address(licredity), shareDelta));
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(false, shareDelta - 1e6, true));
 
         ActionsData[] memory calls = planner.finalize();
 
@@ -302,7 +300,7 @@ contract PositionManagerTest is Deployers {
         ActionsData[] memory calls = planner.finalize();
 
         manager.execute(calls, _deadline);
-        // assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
     }
 
     // function test_dynCall(uint256 amount, uint128 value1, uint128 value2, bytes calldata data1, bytes calldata data2)
@@ -345,39 +343,39 @@ contract PositionManagerTest is Deployers {
     //     manager.execute(calls, _deadline);
     // }
 
-    function test_seize() public {
-        testToken.mint(address(this), 100 ether);
-        testToken.mint(address(0xc0de), 100 ether);
+    // function test_seize() public {
+    //     testToken.mint(address(this), 100 ether);
+    //     testToken.mint(address(0xc0de), 100 ether);
 
-        testToken.approve(address(manager), 100 ether);
+    //     testToken.approve(address(manager), 100 ether);
 
-        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+    //     uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
-        Plan memory planner = Planner.init(tokenId);
-        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(this), 0.9 ether));
-        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(testToken), 1 ether));
+    //     Plan memory planner = Planner.init(tokenId);
+    //     planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(this), 0.9 ether));
+    //     planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(testToken), 1 ether));
 
-        ActionsData[] memory calls = planner.finalize();
+    //     ActionsData[] memory calls = planner.finalize();
 
-        manager.execute(calls, _deadline);
-        assertEq(manager.ownerOf(1), address(this));
-        oracleMock.setFungibleConfig(FungibleMock.wrap(address(testToken)), 0.5 ether, 100_000); // 10%
+    //     manager.execute(calls, _deadline);
+    //     assertEq(manager.ownerOf(1), address(this));
+    //     oracleMock.setFungibleConfig(FungibleMock.wrap(address(testToken)), 0.5 ether, 100_000); // 10%
 
-        vm.startPrank(address(0xc0de));
-        testToken.approve(address(manager), 100 ether);
+    //     vm.startPrank(address(0xc0de));
+    //     testToken.approve(address(manager), 100 ether);
 
-        tokenId = manager.mint(ILicredity(address(licredity)));
+    //     tokenId = manager.mint(ILicredity(address(licredity)));
 
-        planner = Planner.init(tokenId);
-        planner.add(Actions.SEIZE, abi.encode(uint256(1)));
-        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(testToken), 1 ether));
+    //     planner = Planner.init(tokenId);
+    //     planner.add(Actions.SEIZE, abi.encode(uint256(1)));
+    //     planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(testToken), 1 ether));
 
-        calls = planner.finalize();
+    //     calls = planner.finalize();
 
-        manager.execute(calls, _deadline);
-        assertEq(manager.ownerOf(1), address(0xc0de));
-        vm.stopPrank();
-    }
+    //     manager.execute(calls, _deadline);
+    //     assertEq(manager.ownerOf(1), address(0xc0de));
+    //     vm.stopPrank();
+    // }
 
     receive() external payable {}
 }

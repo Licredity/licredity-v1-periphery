@@ -98,11 +98,11 @@ library LicredityDispatcher {
     {
         (uint256 totalShares, uint256 totalAssets) = licredity.getTotalDebt();
 
-        uint256 amount = delta.fullMulDivUp(totalAssets, totalShares);
-
         if (useBalance) {
             licredity.decreaseDebtShare(positionId, delta, true);
         } else {
+            uint256 amount = delta.fullMulDivUp(totalAssets, totalShares);
+
             if (payer != address(this)) {
                 IERC20(address(licredity)).transferFrom(payer, address(this), amount);
             }
