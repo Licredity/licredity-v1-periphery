@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 library UniswapV4Dispatcher {
     uint256 constant OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN = 0xffffffe0;
     uint256 constant SWAP_SELECTOR = 0xf3cd914c;
+    uint256 constant MODIFIER_LIQUIDITY_SELECTOR = 0x4afe393c;
 
     function multiSwapCall(address uniswapV4PoolManager, bytes[] calldata swapParams) internal {
         assembly ("memory-safe") {
@@ -16,20 +17,43 @@ library UniswapV4Dispatcher {
                 for { let offset := 0 } lt(offset, tailOffset) { offset := add(offset, 32) } {
                     let itemLengthOffset := calldataload(add(swapParams.offset, offset))
                     let itemLengthPointer := add(swapParams.offset, itemLengthOffset)
-                    let length := calldataload(itemLengthPointer)
+
+                    let length := and(add(calldataload(itemLengthPointer), 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN)
 
                     let swapDataPointer := add(itemLengthPointer, 0x20)
 
-                    // TODO: hookData is right-padded with zeros, so copy length is (length + 0x20)
-                    calldatacopy(add(fmp, 0x20), swapDataPointer, add(length, 0x20))
+                    // hookData is right-padded with zeros, so copy length is (length + 0x20)
+                    calldatacopy(add(fmp, 0x20), swapDataPointer, length)
 
-                    let success := call(gas(), uniswapV4PoolManager, 0, add(fmp, 0x1c), add(length, 0x20), 0x00, 0x00)
+                    let success := call(gas(), uniswapV4PoolManager, 0, add(fmp, 0x1c), add(length, 0x04), 0x00, 0x00)
 
                     if iszero(success) {
                         mstore(0x00, 0x2fd8bc31) // `UniswapV4SwapFail()`
                         revert(0x1c, 0x04)
                     }
                 }
+            }
+        }
+    }
+
+    function positionManagerCall(address positionManager, uint256 positionValue, bytes calldata positionCalldata)
+        internal
+    {
+        assembly ("memory-safe") {
+            let fmp := mload(0x40)
+            mstore(fmp, MODIFIER_LIQUIDITY_SELECTOR)
+
+            let positionParamsLength :=
+                and(add(positionCalldata.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN)
+
+            calldatacopy(add(fmp, 0x20), positionCalldata.offset, positionParamsLength)
+
+            let success :=
+                call(gas(), positionManager, positionValue, add(fmp, 0x1c), add(positionParamsLength, 0x04), 0x00, 0x00)
+
+            if iszero(success) {
+                mstore(0x00, 0x0cb6ac70) // `PositionManagerCallFail()`
+                revert(0x1c, 0x04)
             }
         }
     }

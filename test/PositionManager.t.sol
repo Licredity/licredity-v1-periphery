@@ -5,9 +5,10 @@ import {Deployers} from "@licredity-v1-test/utils/Deployer.sol";
 import {PositionManager} from "src/PositionManager.sol";
 import {ActionConstants} from "src/libraries/ActionsConstants.sol";
 import {Actions, ActionsData} from "src/types/Actions.sol";
-import {IPositionManager} from "src/interfaces/IPositionManager.sol";
 import {Plan, Planner} from "./shared/Planner.sol";
 import {DynTargetMock} from "./mocks/DynTargetMock.sol";
+import {IPositionManager} from "src/interfaces/IPositionManager.sol";
+import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {Fungible as FungibleMock} from "@licredity-v1-test/utils/Deployer.sol";
@@ -30,7 +31,11 @@ contract PositionManagerTest is Deployers {
 
         testToken = _newAsset(18);
 
-        manager = new PositionManager(address(this), poolManager);
+        // TODO: Fork and test permit2
+        IAllowanceTransfer permit2 = IAllowanceTransfer(address(0x000000000022D473030F116dDEE9F6B43aC78BA3));
+        address uniswapV4PositionManager = address(0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e);
+
+        manager = new PositionManager(address(this), poolManager, uniswapV4PositionManager, permit2);
         manager.updatePoolWhitelist(address(licredity), true);
 
         _deadline = block.timestamp + 1;
@@ -300,45 +305,45 @@ contract PositionManagerTest is Deployers {
         // assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
     }
 
-    function test_dynCall(uint256 amount, uint128 value1, uint128 value2, bytes calldata data1, bytes calldata data2)
-        public
-    {
-        amount = bound(amount, 1, 10000 ether - 1);
+    // function test_dynCall(uint256 amount, uint128 value1, uint128 value2, bytes calldata data1, bytes calldata data2)
+    //     public
+    // {
+    //     amount = bound(amount, 1, 10000 ether - 1);
 
-        address target1 = address(new DynTargetMock());
-        address target2 = address(new DynTargetMock());
+    //     address target1 = address(new DynTargetMock());
+    //     address target2 = address(new DynTargetMock());
 
-        vm.deal(address(manager), uint256(value1) + uint256(value2));
+    //     vm.deal(address(manager), uint256(value1) + uint256(value2));
 
-        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+    //     uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
-        Plan memory planner = Planner.init(tokenId);
-        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(licredity), amount));
-        planner.add(Actions.DYN_CALL, abi.encode(target1, value1, data1));
-        planner.add(Actions.DYN_CALL, abi.encode(target2, value2, data2));
-        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, amount, true));
+    //     Plan memory planner = Planner.init(tokenId);
+    //     planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(licredity), amount));
+    //     planner.add(Actions.DYN_CALL, abi.encode(target1, value1, data1));
+    //     planner.add(Actions.DYN_CALL, abi.encode(target2, value2, data2));
+    //     planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, amount, true));
 
-        ActionsData[] memory calls = planner.finalize();
+    //     ActionsData[] memory calls = planner.finalize();
 
-        vm.expectCall(address(target1), value1, data1);
-        vm.expectCall(address(target2), value2, data2);
+    //     vm.expectCall(address(target1), value1, data1);
+    //     vm.expectCall(address(target2), value2, data2);
 
-        manager.execute(calls, _deadline);
-    }
+    //     manager.execute(calls, _deadline);
+    // }
 
-    function test_dynCall_fail(bytes calldata data) public {
-        DynTargetMock target = new DynTargetMock();
-        target.setShouldThrow(true);
+    // function test_dynCall_fail(bytes calldata data) public {
+    //     DynTargetMock target = new DynTargetMock();
+    //     target.setShouldThrow(true);
 
-        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+    //     uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
-        Plan memory planner = Planner.init(tokenId);
-        planner.add(Actions.DYN_CALL, abi.encode(target, 0, data));
-        ActionsData[] memory calls = planner.finalize();
+    //     Plan memory planner = Planner.init(tokenId);
+    //     planner.add(Actions.DYN_CALL, abi.encode(target, 0, data));
+    //     ActionsData[] memory calls = planner.finalize();
 
-        vm.expectRevert(CallFailure.selector);
-        manager.execute(calls, _deadline);
-    }
+    //     vm.expectRevert(CallFailure.selector);
+    //     manager.execute(calls, _deadline);
+    // }
 
     function test_seize() public {
         testToken.mint(address(this), 100 ether);

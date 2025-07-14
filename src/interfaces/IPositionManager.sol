@@ -10,6 +10,7 @@ interface IPositionManager {
     error PoolNotWhitelisted();
     error InputLengthMismatch();
     error NotApproved(address);
+    error NotSafeCallback();
 
     /// @notice Creates a new position in pool and returns its NFT tokenId
     /// @param pool The pool

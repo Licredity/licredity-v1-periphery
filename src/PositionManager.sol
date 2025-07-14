@@ -2,6 +2,7 @@
 pragma solidity =0.8.30;
 
 import {IPositionManager} from "./interfaces/IPositionManager.sol";
+import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
 import {ERC721} from "./base/ERC721.sol";
 import {PositionManagerConfig} from "./PositionManagerConfig.sol";
 import {PositionInfo, PositionInfoLibrary} from "./types/PositionInfo.sol";
@@ -9,6 +10,7 @@ import {ActionsData, Actions} from "./types/Actions.sol";
 import {ActionConstants} from "./libraries/ActionsConstants.sol";
 import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
 import {LicredityDispatcher} from "./libraries/LicredityDispatcher.sol";
+import {UniswapV4Dispatcher} from "./libraries/UniswapV4Dispatcher.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IUnlockCallback} from "@uniswap-v4-core/interfaces/callback/IUnlockCallback.sol";
@@ -18,21 +20,25 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
     using CalldataDecoder for bytes;
     using LicredityDispatcher for ILicredity;
 
-    IPoolManager public immutable uniswapV4PoolManager;
-
     address transient lockedBy;
     ILicredity transient usingLicredity;
     uint256 transient usingLicredityPositionId;
+
+    IPoolManager internal immutable uniswapV4PoolManager;
+    address internal immutable uniswapV4PostionManager;
 
     uint256 public nextTokenId = 1;
 
     mapping(uint256 tokenId => PositionInfo info) internal positionInfo;
 
-    constructor(address _governor, IPoolManager _poolManager)
-        ERC721("Licredity v1 Position NFT", "LICREDITY-V1-POSM")
-        PositionManagerConfig(_governor)
-    {
-        uniswapV4PoolManager = _poolManager;
+    constructor(
+        address _governor,
+        IPoolManager _uniswapV4poolManager,
+        address _uniswapV4PostionManager,
+        IAllowanceTransfer _permit2
+    ) ERC721("Licredity v1 Position NFT", "LICREDITY-V1-POSM") PositionManagerConfig(_governor, _permit2) {
+        uniswapV4PoolManager = _uniswapV4poolManager;
+        uniswapV4PostionManager = _uniswapV4PostionManager;
     }
 
     // TODO: May be not implemented
@@ -112,21 +118,24 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
     }
 
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
-        (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
-        uint256 numActions = actions.length;
-        require(numActions == params.length, InputLengthMismatch());
         if (msg.sender == address(uniswapV4PoolManager)) {
-            // for (uint256 actionIndex = 0; actionIndex < numActions; actionIndex++) {
-            //     uint256 action = uint8(actions[actionIndex]);
+            (uint256 positionValue, bytes calldata positionParams, bytes[] calldata swapParams) =
+                data.decodeSwapsPositionParams();
 
-            //     _handleUniswapV4Action(action, params[actionIndex]);
-            // }
-        } else {
+            UniswapV4Dispatcher.multiSwapCall(address(uniswapV4PoolManager), swapParams);
+            UniswapV4Dispatcher.positionManagerCall(uniswapV4PostionManager, positionValue, positionParams);
+        } else if (msg.sender == address(usingLicredity)) {
+            (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
+            uint256 numActions = actions.length;
+            require(numActions == params.length, InputLengthMismatch());
+
             for (uint256 actionIndex = 0; actionIndex < numActions; actionIndex++) {
                 uint256 action = uint8(actions[actionIndex]);
 
                 _handleLicredityAction(action, params[actionIndex]);
             }
+        } else {
+            revert NotSafeCallback();
         }
 
         return "";
@@ -177,25 +186,28 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
 
             _transfer(msgSender(), seizedTokenId);
             return;
-        } else if (action == Actions.DYN_CALL) {
-            assembly ("memory-safe") {
-                let fmp := mload(0x40)
-                let target := calldataload(params.offset)
-                let value := calldataload(add(params.offset, 0x20))
-                let dataLen := calldataload(add(params.offset, 0x60))
-
-                calldatacopy(fmp, add(params.offset, 0x80), dataLen)
-
-                let success := call(gas(), target, value, fmp, dataLen, 0x00, 0x00)
-
-                if iszero(success) {
-                    mstore(0x00, 0x674ac132) // `CallFailure()`
-                    revert(0x1c, 0x04)
-                }
-            }
-
-            return;
+        } else if (action == Actions.UNISWAP_V4_CALL) {
+            uniswapV4PoolManager.unlock(params);
         }
+        // else if (action == Actions.DYN_CALL) {
+        //     assembly ("memory-safe") {
+        //         let fmp := mload(0x40)
+        //         let target := calldataload(params.offset)
+        //         let value := calldataload(add(params.offset, 0x20))
+        //         let dataLen := calldataload(add(params.offset, 0x60))
+
+        //         calldatacopy(fmp, add(params.offset, 0x80), dataLen)
+
+        //         let success := call(gas(), target, value, fmp, dataLen, 0x00, 0x00)
+
+        //         if iszero(success) {
+        //             mstore(0x00, 0x674ac132) // `CallFailure()`
+        //             revert(0x1c, 0x04)
+        //         }
+        //     }
+
+        //     return;
+        // }
     }
 
     /// @notice Calculates the address for a action
