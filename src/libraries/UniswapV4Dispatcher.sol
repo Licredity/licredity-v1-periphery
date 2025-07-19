@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 library UniswapV4Dispatcher {
     uint256 constant OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN = 0xffffffe0;
     uint256 constant SWAP_SELECTOR = 0xf3cd914c;
-    uint256 constant MODIFIER_LIQUIDITY_SELECTOR = 0x4afe393c;
+    uint256 constant MODIFIER_LIQUIDITY_SELECTOR = 0xdd46508f;
 
     function multiSwapCall(address uniswapV4PoolManager, bytes[] calldata swapParams) internal {
         assembly ("memory-safe") {
@@ -41,14 +41,22 @@ library UniswapV4Dispatcher {
     {
         assembly ("memory-safe") {
             let fmp := mload(0x40)
+            
+            // 0x00: selector
+            // 0x20: unlockdata offset(0x40)
+            // 0x40: deadline(block.timestamp)
+            // 0x60: positionManagerCallData.length
+            // 0x80: beginning of positionManagerCallData
             mstore(fmp, MODIFIER_LIQUIDITY_SELECTOR)
+            mstore(add(fmp, 0x20), 0x40)
+            mstore(add(fmp, 0x40), timestamp())
 
-            let positionParamsLength := and(add(positionCalldata.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN)
-
-            calldatacopy(add(fmp, 0x20), positionCalldata.offset, positionParamsLength)
+            let positionParamsLength := positionCalldata.length
+            mstore(add(fmp, 0x60), positionParamsLength)
+            calldatacopy(add(fmp, 0x80), positionCalldata.offset, positionParamsLength)
 
             let success :=
-                call(gas(), positionManager, positionValue, add(fmp, 0x1c), add(positionParamsLength, 0x04), 0x00, 0x00)
+                call(gas(), positionManager, positionValue, add(fmp, 0x1c), add(positionParamsLength, 0x64), 0x00, 0x00)
 
             if iszero(success) {
                 mstore(0x00, 0x0cb6ac70) // `PositionManagerCallFail()`

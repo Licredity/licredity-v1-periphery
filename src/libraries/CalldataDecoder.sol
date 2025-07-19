@@ -63,6 +63,26 @@ library CalldataDecoder {
         }
     }
 
+    function decodePositionManagerParams(bytes calldata _bytes) internal pure returns (uint256 positionValue, bytes calldata positionParams) {
+        assembly ("memory-safe") {
+            // 0x00: positionValue
+            // 0x20: offset to `positionParams.length`(0x40)
+            // 0x40: positionParams.length
+            // 0x60: beginning of positionParams
+
+            positionValue := calldataload(_bytes.offset)
+
+            let invalidData := xor(calldataload(add(_bytes.offset, 0x20)), 0x40)
+            positionParams.offset := add(_bytes.offset, 0x60)
+            positionParams.length := and(calldataload(add(_bytes.offset, 0x40)), OFFSET_OR_LENGTH_MASK)
+
+            if invalidData {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
+        }
+    }
+
     function decodeSwapsPositionParams(bytes calldata _bytes)
         internal
         pure

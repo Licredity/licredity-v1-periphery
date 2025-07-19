@@ -23,6 +23,9 @@ library Actions {
     uint256 public constant DECREASE_DEBT_SHARE = 0x07;
     uint256 public constant SEIZE = 0x08;
 
-    uint256 public constant UNISWAP_V4_CALL = 0x09;
-    // uint256 public constant DYN_CALL = 0x09;
+    uint256 public constant UNISWAP_V4_POSITION_MANAGER_CALL = 0x09;
+    uint256 public constant UNISWAP_V4_TAKE = 0x0a;
+    uint256 public constant UNISWAP_V4_SETTLE = 0x0b;
+    uint256 public constant UNISWAP_V4_SWEEP = 0x0c;
+    // uint256 public constant DYN_CALL = 0x0d;
 }

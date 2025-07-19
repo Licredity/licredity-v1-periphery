@@ -11,7 +11,7 @@ import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 
 contract UniswapV4DispatcherTest is Test {
     event Swap(PoolKey key, IPoolManager.SwapParams params, bytes hookData);
-    event ModifierLiquidityWithoutUnlock(uint256 indexed value, bytes actions, bytes[] params);
+    event ModifierLiquidity(uint256 indexed value, uint256 indexed deadline, bytes unlockData);
 
     MockUniswapV4Target swapTarget;
     MockUniswapV4Dispatcher swapCaller;
@@ -52,12 +52,12 @@ contract UniswapV4DispatcherTest is Test {
         bytes[] params;
     }
 
-    function test_fuzz_positionManagerCall(uint256 value, bytes calldata actions, bytes[] calldata params) public {
+    function test_fuzz_positionManagerCall(uint256 value, bytes calldata unlockData) public {
         vm.assume(value < address(this).balance);
 
-        vm.expectEmit(true, false, false, true);
-        emit ModifierLiquidityWithoutUnlock(value, actions, params);
+        vm.expectEmit(true, true, false, true);
+        emit ModifierLiquidity(value, block.timestamp, unlockData);
 
-        swapCaller.positionManagerCall{value: value}(value, abi.encode(actions, params));
+        swapCaller.positionManagerCall{value: value}(value, unlockData);
     }
 }
