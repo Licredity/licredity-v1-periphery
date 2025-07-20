@@ -14,14 +14,6 @@ contract MockCalldataDecoder {
         return CalldataDecoder.decodeActionsRouterParams(_bytes);
     }
 
-    function decodeSwapsPositionParams(bytes calldata _bytes)
-        external
-        pure
-        returns (uint256 positionValue, bytes calldata positionParams, bytes[] calldata swapParams)
-    {
-        return CalldataDecoder.decodeSwapsPositionParams(_bytes);
-    }
-
     function decodeDeposit(bytes calldata params) external pure returns (bool boolean, address token, uint256 amount) {
         return CalldataDecoder.decodeDeposit(params);
     }

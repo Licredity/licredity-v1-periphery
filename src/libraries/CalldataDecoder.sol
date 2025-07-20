@@ -63,7 +63,11 @@ library CalldataDecoder {
         }
     }
 
-    function decodeCallValueAndData(bytes calldata _bytes) internal pure returns (uint256 positionValue, bytes calldata positionParams) {
+    function decodeCallValueAndData(bytes calldata _bytes)
+        internal
+        pure
+        returns (uint256 positionValue, bytes calldata positionParams)
+    {
         assembly ("memory-safe") {
             // 0x00: positionValue
             // 0x20: offset to `positionParams.length`(0x40)
@@ -77,57 +81,6 @@ library CalldataDecoder {
             positionParams.length := and(calldataload(add(_bytes.offset, 0x40)), OFFSET_OR_LENGTH_MASK)
 
             if invalidData {
-                mstore(0, SLICE_ERROR_SELECTOR)
-                revert(0x1c, 4)
-            }
-        }
-    }
-
-    function decodeSwapsPositionParams(bytes calldata _bytes)
-        internal
-        pure
-        returns (uint256 positionValue, bytes calldata positionParams, bytes[] calldata swapParams)
-    {
-        assembly ("memory-safe") {
-            // 0x00: positionValue
-            // 0x20: offset to `positionParams.length`(0x60)
-            // 0x40: offset to `swapParams.length`
-            // 0x60: positionParams.length
-            // 0x80: beginning of positionParams
-
-            positionValue := calldataload(_bytes.offset)
-
-            let invalidData := xor(calldataload(add(_bytes.offset, 0x20)), 0x60)
-            positionParams.offset := add(_bytes.offset, 0x80)
-            positionParams.length := and(calldataload(add(_bytes.offset, 0x60)), OFFSET_OR_LENGTH_MASK)
-
-            // Round actions length up to be word-aligned, and add 0x60 (for the first 3 words of encoding)
-            let swapParamsOffset :=
-                add(and(add(positionParams.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN), 0x80)
-            // Verify params offset matches strict encoding
-            invalidData := or(invalidData, xor(calldataload(add(_bytes.offset, 0x40)), swapParamsOffset))
-            let swapParamsLengthPointer := add(_bytes.offset, swapParamsOffset)
-
-            swapParams.length := and(calldataload(swapParamsLengthPointer), OFFSET_OR_LENGTH_MASK)
-            swapParams.offset := add(swapParamsLengthPointer, 0x20)
-
-            // Expected offset for `swapParams[0]` is swapParams.length * 32
-            // As the first `swapParams.length` slots are pointers to each of the array element lengths
-            let tailOffset := shl(5, swapParams.length)
-            let expectedOffset := tailOffset
-
-            for { let offset := 0 } lt(offset, tailOffset) { offset := add(offset, 32) } {
-                let itemLengthOffset := calldataload(add(swapParams.offset, offset))
-                // Verify that the offset matches the expected offset from strict encoding
-                invalidData := or(invalidData, xor(itemLengthOffset, expectedOffset))
-                let itemLengthPointer := add(swapParams.offset, itemLengthOffset)
-                let length :=
-                    add(and(add(calldataload(itemLengthPointer), 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN), 0x20)
-                expectedOffset := add(expectedOffset, length)
-            }
-
-            // if the data encoding was invalid, or the provided bytes string isnt as long as the encoding says, revert
-            if or(invalidData, lt(add(_bytes.length, _bytes.offset), add(swapParams.offset, expectedOffset))) {
                 mstore(0, SLICE_ERROR_SELECTOR)
                 revert(0x1c, 4)
             }
