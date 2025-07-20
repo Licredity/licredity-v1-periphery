@@ -17,4 +17,8 @@ contract MockUniswapV4Dispatcher {
     function positionManagerCall(uint256 positionValue, bytes calldata positionCalldata) external payable {
         UniswapV4Dispatcher.positionManagerCall(uniswapV4Mock, positionValue, positionCalldata);
     }
+
+    function uniswapPoolSwapCall(bytes calldata swapCalldata) external payable {
+        UniswapV4Dispatcher.uniswapPoolSwapCall(uniswapV4Mock, swapCalldata);
+    }
 }

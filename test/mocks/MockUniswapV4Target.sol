@@ -11,6 +11,7 @@ contract MockUniswapV4Target {
 
     event UnlockData(bytes unlockData);
     event ModifierLiquidity(uint256 indexed value, uint256 indexed deadline, bytes unlockData);
+    event Swap(PoolKey key, IPoolManager.SwapParams params, bytes hookData);
 
     uint256 public swapCounter = 0;
 
@@ -20,5 +21,9 @@ contract MockUniswapV4Target {
 
     function modifyLiquidities(bytes calldata unlockData, uint256 deadline) external payable {
         emit ModifierLiquidity(msg.value, deadline, unlockData);
+    }
+
+    function swap(PoolKey memory key, IPoolManager.SwapParams memory params, bytes calldata hookData) external {
+        emit Swap(key, params, hookData);
     }
 }
