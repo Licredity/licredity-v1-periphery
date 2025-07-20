@@ -12,6 +12,24 @@ contract CalldataDecoderTest is Test {
         decoder = new MockCalldataDecoder();
     }
 
+    function test_fuzz_decodeCallValueAndData(uint256 _positionCallValue, bytes memory _positionCalldata) external view {
+        bytes memory params = abi.encode(_positionCallValue, _positionCalldata);
+        (uint256 positionValue, bytes memory positionParams) = decoder.decodeCallValueAndData(params);
+
+        assertEq(positionValue, _positionCallValue);
+        assertEq(positionParams, _positionCalldata);
+    }
+
+    function test_decodeCallValueAndData_sliceOutOfBounds() public {
+        bytes memory invalidParams = abi.encode(uint256(1 ether), hex"12345678");
+        assembly ("memory-safe") {
+            mstore(add(invalidParams, 0x40), 0x00)
+        }
+
+        vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
+        decoder.decodeSwapsPositionParams(invalidParams);
+    }
+
     function test_fuzz_decodeSwapsPositionParams(
         uint256 _positionCallValue,
         bytes memory _positionCalldata,
@@ -27,6 +45,19 @@ contract CalldataDecoderTest is Test {
         for (uint256 i = 0; i < swapParams.length; i++) {
             assertEq(swapParams[i], _swapParams[i]);
         }
+    }
+
+    function test_fuzz_decodeSwapsPositionParams_swapIsEmpty(uint256 _positionCallValue, bytes memory _positionCalldata)
+        external
+        view
+    {
+        bytes memory params = abi.encode(_positionCallValue, _positionCalldata, bytes(""));
+        (uint256 positionValue, bytes memory positionParams, bytes[] memory swapParams) =
+            decoder.decodeSwapsPositionParams(params);
+
+        assertEq(positionValue, _positionCallValue);
+        assertEq(positionParams, _positionCalldata);
+        assertEq(swapParams.length, 0);
     }
 
     function test_decodeActionsRouterParams_sliceOutOfBounds() public {

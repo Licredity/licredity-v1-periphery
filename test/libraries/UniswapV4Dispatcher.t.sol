@@ -10,7 +10,7 @@ import {PoolKey} from "@uniswap-v4-core/types/PoolKey.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 
 contract UniswapV4DispatcherTest is Test {
-    event Swap(PoolKey key, IPoolManager.SwapParams params, bytes hookData);
+    event UnlockData(bytes unlockData);
     event ModifierLiquidity(uint256 indexed value, uint256 indexed deadline, bytes unlockData);
 
     MockUniswapV4Target swapTarget;
@@ -22,34 +22,13 @@ contract UniswapV4DispatcherTest is Test {
         swapCaller = new MockUniswapV4Dispatcher(address(swapTarget));
     }
 
-    struct SwapParams {
-        PoolKey key;
-        IPoolManager.SwapParams params;
-        bytes hookData;
-    }
+    function test_fuzz_uniswapPoolManagerCall(uint256 value, bytes calldata unlockData) public {
+        vm.assume(value < address(this).balance);
 
-    function test_fuzz_multiSwapCall(SwapParams[] memory params) public {
-        if (params.length == 0) {
-            bytes[] memory swapParams = new bytes[](0);
-            swapCaller.multiSwapCall(swapParams);
-        } else {
-            bytes[] memory swapParams = new bytes[](params.length);
-            for (uint256 i = 0; i < params.length; i++) {
-                swapParams[i] = abi.encode(params[i].key, params[i].params, params[i].hookData);
-                swapParamsHash = swapParamsHash.update(swapParams[i]);
-            }
+        vm.expectEmit(true, false, false, true);
+        emit UnlockData(unlockData);
 
-            vm.expectEmit(false, false, false, true);
-            emit Swap(params[0].key, params[0].params, params[0].hookData);
-            swapCaller.multiSwapCall(swapParams);
-            assertEq(swapTarget.swapCounter(), params.length);
-            assertEq(Hasher.unwrap(swapTarget.swapParamsTargetHash()), Hasher.unwrap(swapParamsHash));
-        }
-    }
-
-    struct Plan {
-        bytes actions;
-        bytes[] params;
+        swapCaller.uniswapPoolManagerCall{value: value}(value, unlockData);
     }
 
     function test_fuzz_positionManagerCall(uint256 value, bytes calldata unlockData) public {

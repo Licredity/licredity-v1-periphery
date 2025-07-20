@@ -63,7 +63,7 @@ library CalldataDecoder {
         }
     }
 
-    function decodePositionManagerParams(bytes calldata _bytes) internal pure returns (uint256 positionValue, bytes calldata positionParams) {
+    function decodeCallValueAndData(bytes calldata _bytes) internal pure returns (uint256 positionValue, bytes calldata positionParams) {
         assembly ("memory-safe") {
             // 0x00: positionValue
             // 0x20: offset to `positionParams.length`(0x40)
