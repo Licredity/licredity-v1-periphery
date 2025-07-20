@@ -9,18 +9,16 @@ import {console} from "@forge-std/console.sol";
 contract MockUniswapV4Target {
     Hasher public swapParamsTargetHash = Hasher.wrap(hex"");
 
-    event Swap(PoolKey key, IPoolManager.SwapParams params, bytes hookData);
-    event ModifierLiquidityWithoutUnlock(uint256 indexed value, bytes actions, bytes[] params);
+    event UnlockData(bytes unlockData);
+    event ModifierLiquidity(uint256 indexed value, uint256 indexed deadline, bytes unlockData);
 
     uint256 public swapCounter = 0;
 
-    function swap(PoolKey memory key, IPoolManager.SwapParams memory params, bytes calldata hookData) external {
-        swapParamsTargetHash = swapParamsTargetHash.update(abi.encode(key, params, hookData));
-        swapCounter++;
-        emit Swap(key, params, hookData);
+    function unlock(bytes calldata unlockData) external payable {
+        emit UnlockData(unlockData);
     }
 
-    function modifyLiquiditiesWithoutUnlock(bytes calldata actions, bytes[] calldata params) external payable {
-        emit ModifierLiquidityWithoutUnlock(msg.value, actions, params);
+    function modifyLiquidities(bytes calldata unlockData, uint256 deadline) external payable {
+        emit ModifierLiquidity(msg.value, deadline, unlockData);
     }
 }
