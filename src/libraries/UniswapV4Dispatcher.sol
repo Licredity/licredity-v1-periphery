@@ -8,7 +8,7 @@ library UniswapV4Dispatcher {
 
     uint256 constant SWAP_SELECTOR = 0xf3cd914c;
 
-    function uniswapPoolManagerCall(address uniswapV4PoolManager, uint256 swapValue, bytes calldata swapCalldata) internal {
+    function uniswapPoolManagerCall(address uniswapV4PoolManager, bytes calldata swapCalldata) internal {
         assembly ("memory-safe") {
             let fmp := mload(0x40)
 
@@ -21,7 +21,8 @@ library UniswapV4Dispatcher {
             mstore(add(fmp, 0x40), swapCalldata.length)
             calldatacopy(add(fmp, 0x60), swapCalldata.offset, swapCalldata.length)
 
-            let success := call(gas(), uniswapV4PoolManager, swapValue, add(fmp, 0x1c), add(swapCalldata.length, 0x44), 0x00, 0x00)
+            let success :=
+                call(gas(), uniswapV4PoolManager, 0, add(fmp, 0x1c), add(swapCalldata.length, 0x44), 0x00, 0x00)
 
             if iszero(success) {
                 mstore(0x00, 0x2fd8bc31) // `UniswapV4SwapFail()`
@@ -35,7 +36,7 @@ library UniswapV4Dispatcher {
     {
         assembly ("memory-safe") {
             let fmp := mload(0x40)
-            
+
             // 0x00: selector
             // 0x20: unlockdata offset(0x40)
             // 0x40: deadline(block.timestamp)
@@ -54,6 +55,23 @@ library UniswapV4Dispatcher {
 
             if iszero(success) {
                 mstore(0x00, 0x0cb6ac70) // `PositionManagerCallFail()`
+                revert(0x1c, 0x04)
+            }
+        }
+    }
+
+    function uniswapPoolSwapCall(address uniswapV4PoolManager, bytes calldata swapCalldata) internal {
+        assembly ("memory-safe") {
+            let fmp := mload(0x40)
+            mstore(fmp, SWAP_SELECTOR)
+
+            calldatacopy(add(fmp, 0x20), swapCalldata.offset, swapCalldata.length)
+
+            let success :=
+                call(gas(), uniswapV4PoolManager, 0, add(fmp, 0x1c), add(swapCalldata.length, 0x04), 0x00, 0x00)
+
+            if iszero(success) {
+                mstore(0x00, 0x2fd8bc31) // `UniswapV4SwapFail()`
                 revert(0x1c, 0x04)
             }
         }

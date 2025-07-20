@@ -15,7 +15,7 @@ contract MockUniswapV4Target {
 
     uint256 public swapCounter = 0;
 
-    function unlock(bytes calldata unlockData) external payable {
+    function unlock(bytes calldata unlockData) external {
         emit UnlockData(unlockData);
     }
 

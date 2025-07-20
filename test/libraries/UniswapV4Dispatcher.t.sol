@@ -23,13 +23,11 @@ contract UniswapV4DispatcherTest is Test {
         swapCaller = new MockUniswapV4Dispatcher(address(swapTarget));
     }
 
-    function test_fuzz_uniswapPoolManagerCall(uint256 value, bytes calldata unlockData) public {
-        vm.assume(value < address(this).balance);
-
+    function test_fuzz_uniswapPoolManagerCall(bytes calldata unlockData) public {
         vm.expectEmit(true, false, false, true);
         emit UnlockData(unlockData);
 
-        swapCaller.uniswapPoolManagerCall{value: value}(value, unlockData);
+        swapCaller.uniswapPoolManagerCall(unlockData);
     }
 
     function test_fuzz_uniswapPoolSwap(
