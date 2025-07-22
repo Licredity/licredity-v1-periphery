@@ -2,25 +2,24 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "@forge-std/Test.sol";
-import {UniswapV4Dispatcher} from "src/libraries/UniswapV4Dispatcher.sol";
 import {Hasher} from "../shared/Hasher.sol";
-import {MockUniswapV4Dispatcher} from "../mocks/MockUniswapV4Dispatcher.sol";
+import {MockUniswapV4Router} from "../mocks/MockUniswapV4Router.sol";
 import {MockUniswapV4Target} from "../mocks/MockUniswapV4Target.sol";
 import {PoolKey} from "@uniswap-v4-core/types/PoolKey.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 
-contract UniswapV4DispatcherTest is Test {
+contract UniswapV4RouterTest is Test {
     event UnlockData(bytes unlockData);
     event ModifierLiquidity(uint256 indexed value, uint256 indexed deadline, bytes unlockData);
     event Swap(PoolKey key, IPoolManager.SwapParams params, bytes hookData);
 
     MockUniswapV4Target swapTarget;
-    MockUniswapV4Dispatcher swapCaller;
+    MockUniswapV4Router swapCaller;
     Hasher swapParamsHash = Hasher.wrap(hex"");
 
     function setUp() public {
         swapTarget = new MockUniswapV4Target();
-        swapCaller = new MockUniswapV4Dispatcher(address(swapTarget));
+        swapCaller = new MockUniswapV4Router(address(swapTarget));
     }
 
     function test_fuzz_uniswapPoolManagerCall(bytes calldata unlockData) public {
