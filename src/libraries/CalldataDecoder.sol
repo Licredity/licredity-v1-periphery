@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {Currency} from "@uniswap-v4-core/types/Currency.sol";
+
 library CalldataDecoder {
     error SliceOutOfBounds();
 
@@ -129,6 +131,56 @@ library CalldataDecoder {
     function decodeSeizeTokenId(bytes calldata params) internal pure returns (uint256 tokenId) {
         assembly ("memory-safe") {
             tokenId := calldataload(params.offset)
+        }
+    }
+
+    /// @dev equivalent to: abi.decode(params, (Currency, uint256, bool)) in calldata
+    function decodeCurrencyUint256AndBool(bytes calldata params)
+        internal
+        pure
+        returns (Currency currency, uint256 amount, bool boolean)
+    {
+        assembly ("memory-safe") {
+            if lt(params.length, 0x60) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
+            currency := calldataload(params.offset)
+            amount := calldataload(add(params.offset, 0x20))
+            boolean := calldataload(add(params.offset, 0x40))
+        }
+    }
+
+    /// @dev equivalent to: abi.decode(params, (Currency, address, uint256)) in calldata
+    function decodeCurrencyAddressAndUint256(bytes calldata params)
+        internal
+        pure
+        returns (Currency currency, address _address, uint256 amount)
+    {
+        assembly ("memory-safe") {
+            if lt(params.length, 0x60) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
+            currency := calldataload(params.offset)
+            _address := calldataload(add(params.offset, 0x20))
+            amount := calldataload(add(params.offset, 0x40))
+        }
+    }
+
+    /// @dev equivalent to: abi.decode(params, (Currency, address)) in calldata
+    function decodeCurrencyAndAddress(bytes calldata params)
+        internal
+        pure
+        returns (Currency currency, address _address)
+    {
+        assembly ("memory-safe") {
+            if lt(params.length, 0x40) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
+            currency := calldataload(params.offset)
+            _address := calldataload(add(params.offset, 0x20))
         }
     }
 }

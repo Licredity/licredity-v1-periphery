@@ -10,6 +10,8 @@ import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 abstract contract UniswapV4Router {
     using TransientStateLibrary for IPoolManager;
 
+    /// @notice Emitted trying to settle a positive delta.
+    error DeltaNotPositive(Currency currency);
     /// @notice Emitted trying to take a negative delta.
     error DeltaNotNegative(Currency currency);
 
@@ -98,6 +100,18 @@ abstract contract UniswapV4Router {
         }
     }
 
+    /// @notice Sweeps the entire contract balance of specified currency to the recipient
+    function _sweep(Currency currency, address to) internal {
+        uint256 balance = currency.balanceOfSelf();
+        if (balance > 0) currency.transfer(to, balance);
+    }
+
+    /// @notice Pay and settle a currency to the PoolManager
+    /// @dev The implementing contract must ensure that the `payer` is a secure address
+    /// @param currency Currency to settle
+    /// @param payer Address of the payer
+    /// @param amount Amount to send
+    /// @dev Returns early if the amount is 0
     function _settle(Currency currency, address payer, uint256 amount) internal {
         if (amount == 0) return;
 
@@ -108,6 +122,16 @@ abstract contract UniswapV4Router {
             _pay(currency, payer, address(poolManager), amount);
             poolManager.settle();
         }
+    }
+
+    /// @notice Take an amount of currency out of the PoolManager
+    /// @param currency Currency to take
+    /// @param recipient Address to receive the currency
+    /// @param amount Amount to take
+    /// @dev Returns early if the amount is 0
+    function _take(Currency currency, address recipient, uint256 amount) internal {
+        if (amount == 0) return;
+        poolManager.take(currency, recipient, amount);
     }
 
     /// @notice Abstract function for contracts to implement paying tokens to the poolManager
@@ -128,12 +152,31 @@ abstract contract UniswapV4Router {
         amount = uint256(-_amount);
     }
 
+    /// @notice Obtain the full credit owed to this contract (positive delta)
+    /// @param currency Currency to get the delta for
+    /// @return amount The amount owed to this contract as a uint256
+    function _getFullCredit(Currency currency) internal view returns (uint256 amount) {
+        int256 _amount = poolManager.currencyDelta(address(this), currency);
+        // If the amount is negative, it should be settled not taken.
+        if (_amount < 0) revert DeltaNotPositive(currency);
+        amount = uint256(_amount);
+    }
+
     /// @notice Calculates the amount for a settle action
     function _mapSettleAmount(uint256 amount, Currency currency) internal view returns (uint256) {
         if (amount == ActionConstants.CONTRACT_BALANCE) {
             return currency.balanceOfSelf();
         } else if (amount == ActionConstants.OPEN_DELTA) {
             return _getFullDebt(currency);
+        } else {
+            return amount;
+        }
+    }
+
+    /// @notice Calculates the amount for a take action
+    function _mapTakeAmount(uint256 amount, Currency currency) internal view returns (uint256) {
+        if (amount == ActionConstants.OPEN_DELTA) {
+            return _getFullCredit(currency);
         } else {
             return amount;
         }
