@@ -1,21 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {Deployers} from "@licredity-v1-test/utils/Deployer.sol";
 import {PositionManager} from "src/PositionManager.sol";
-import {ActionConstants} from "src/libraries/ActionsConstants.sol";
+import {ActionConstants} from "src/libraries/ActionConstants.sol";
 import {Actions, ActionsData} from "src/types/Actions.sol";
 import {Plan, Planner} from "./shared/Planner.sol";
+import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {DynTargetMock} from "./mocks/DynTargetMock.sol";
 import {IPositionManager} from "src/interfaces/IPositionManager.sol";
 import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
+import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
-import {Fungible as FungibleMock} from "@licredity-v1-test/utils/Deployer.sol";
-import {BaseERC20Mock} from "@licredity-v1-test/utils/Deployer.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
+import {BaseERC20Mock} from "@licredity-v1-test/utils/Deployer.sol";
+import {Fungible as FungibleMock} from "@licredity-v1-test/utils/Deployer.sol";
 
-contract PositionManagerTest is Deployers {
+contract PositionManagerTest is PeripheryDeployers {
     error NotMinted();
     error CallFailure();
 
@@ -25,15 +26,19 @@ contract PositionManagerTest is Deployers {
     uint256 _deadline;
 
     function setUp() public {
-        deployETHLicredityWithUniswapV4();
+        IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"01");
+        deployLicredity(address(0), address(poolManager), address(this), "Debt ETH", "DETH");
+        licredity.setDebtLimit(10000 ether);
+
         deployAndSetOracleMock();
         deployNonFungibleMock();
 
         testToken = _newAsset(18);
 
-        // TODO: Fork and test permit2
-        IAllowanceTransfer permit2 = IAllowanceTransfer(address(0x000000000022D473030F116dDEE9F6B43aC78BA3));
-        address uniswapV4PositionManager = address(0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e);
+        IAllowanceTransfer permit2 = IAllowanceTransfer(deployPermit2());
+        address uniswapV4PositionManager = deployUniswapV4PositionManager(
+            address(poolManager), address(permit2), 100_000, address(0), address(0), hex"02"
+        );
 
         manager = new PositionManager(address(this), poolManager, uniswapV4PositionManager, permit2);
         manager.updatePoolWhitelist(address(licredity), true);
