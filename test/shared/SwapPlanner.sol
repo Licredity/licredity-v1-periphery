@@ -51,6 +51,19 @@ library SwapPlanner {
         return abi.encode(plan.actions, plan.params);
     }
 
+    function addSwap(
+        SwapPlan memory plan,
+        Currency inputCurrency,
+        Currency outputCurrency,
+        address takeRecipient,
+        bool payIsUser
+    ) internal pure returns (SwapPlan memory) {
+        plan = plan.add(Actions.UNISWAP_V4_SETTLE, abi.encode(inputCurrency, ActionConstants.OPEN_DELTA, payIsUser));
+        plan = plan.add(Actions.UNISWAP_V4_TAKE, abi.encode(outputCurrency, takeRecipient, ActionConstants.OPEN_DELTA));
+
+        return plan;
+    }
+
     function finalizeSwap(
         SwapPlan memory plan,
         Currency inputCurrency,
