@@ -200,6 +200,7 @@ contract PositionManager is
             _uniswapPoolManagerCall(params);
             return;
         } else if (action == Actions.DYN_CALL) {
+            // abi.decode(params, (address target, uint256 value, bytes data));
             assembly ("memory-safe") {
                 let fmp := mload(0x40)
                 let target := calldataload(params.offset)
@@ -274,4 +275,6 @@ contract PositionManager is
             IERC20(Currency.unwrap(currency)).transferFrom(payer, recipient, amount);
         }
     }
+
+    receive() external payable {}
 }
