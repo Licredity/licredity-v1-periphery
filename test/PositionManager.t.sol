@@ -95,6 +95,14 @@ contract PositionManagerTest is PeripheryDeployers {
         manager.depositFungible{value: 0.1 ether}(tokenId, address(0), 0.1 ether);
     }
 
+    // function test_multicall_depositFungible_native() public {
+    //     bytes[] memory calls = new bytes[](2);
+    //     calls[0] = abi.encodeCall(IPositionManager.mint, (ILicredity(address(licredity))));
+    //     calls[1] = abi.encodeCall(IPositionManager.depositFungible, (1, address(0), 0.1 ether));
+
+    //     manager.multicall{value: 0.1 ether}(calls);
+    // }
+
     function test_depositFungible_erc20() public {
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
@@ -104,6 +112,17 @@ contract PositionManagerTest is PeripheryDeployers {
         vm.expectEmit(true, true, false, true);
         emit ILicredity.DepositFungible(1, Fungible.wrap(address(testToken)), 10 ether);
         manager.depositFungible(tokenId, address(testToken), 10 ether);
+    }
+
+    function test_multicall_depositFungible_erc20() public {
+        testToken.mint(address(this), 10 ether);
+        testToken.approve(address(manager), 10 ether);
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(IPositionManager.mint, (ILicredity(address(licredity))));
+        calls[1] = abi.encodeCall(IPositionManager.depositFungible, (1, address(testToken), 10 ether));
+
+        manager.multicall(calls);
     }
 
     function test_depositNonFungible() public {

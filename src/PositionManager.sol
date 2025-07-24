@@ -6,6 +6,7 @@ import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
 import {ERC721} from "./base/ERC721.sol";
 import {UniswapV4Router} from "./base/UniswapV4Router.sol";
 import {LicredityRouter} from "./base/LicredityRouter.sol";
+import {Multicall_v4} from "./base/Multicall_v4.sol";
 import {PositionManagerConfig} from "./PositionManagerConfig.sol";
 import {PositionInfo, PositionInfoLibrary} from "./types/PositionInfo.sol";
 import {ActionsData, Actions} from "./types/Actions.sol";
@@ -20,6 +21,7 @@ import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 contract PositionManager is
     IPositionManager,
     IUnlockCallback,
+    Multicall_v4,
     UniswapV4Router,
     LicredityRouter,
     ERC721,
@@ -98,9 +100,9 @@ contract PositionManager is
         _depositFungible(info.pool(), info.positionId(), msg.sender, token, amount);
     }
 
-    function depositNonFungible(uint256 tokenId, address token, uint256 depsoittTokenId) external {
+    function depositNonFungible(uint256 tokenId, address token, uint256 depsoitTokenId) external {
         PositionInfo info = positionInfo[tokenId];
-        _depositNonFungible(info.pool(), info.positionId(), msg.sender, token, depsoittTokenId);
+        _depositNonFungible(info.pool(), info.positionId(), msg.sender, token, depsoitTokenId);
     }
 
     function execute(ActionsData[] calldata inputs, uint256 deadline)
