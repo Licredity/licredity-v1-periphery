@@ -117,6 +117,9 @@ contract PositionManager is
                 usingLicredityPositionId = positionInfo[input.tokenId].positionId();
 
                 usingLicredity.unlock(input.unlockData);
+
+                usingLicredity = ILicredity(address(0));
+                usingLicredityPositionId = 0;
             } else {
                 poolManager.unlock(input.unlockData);
             }
