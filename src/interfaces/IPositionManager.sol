@@ -11,6 +11,7 @@ interface IPositionManager {
     error InputLengthMismatch();
     error NotApproved(address);
     error NotSafeCallback();
+    error DynCallTargetError();
 
     /// @notice Creates a new position in pool and returns its NFT tokenId
     /// @param pool The pool
