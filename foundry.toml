@@ -5,6 +5,7 @@ libs = ["dependencies"]
 fs_permissions = [
     { access = "read", path = "./test/bin" },
     { access = "read", path = "./out" },
+    { access = "read", path = "./test/test_data" },
 ]
 remappings = [
     "@forge-std/=dependencies/forge-std-1.9.7/src",

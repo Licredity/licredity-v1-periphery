@@ -8,8 +8,11 @@ import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
+import {stdJson} from "@forge-std/StdJson.sol";
 
 contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
+    using stdJson for string;
+
     IPoolManager uniswapV4poolManager;
     PositionManager licredityManager;
     uint256 _deadline;
@@ -17,8 +20,10 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
     address constant USDC = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address constant PARASWAP = address(0x6A000F20005980200259B80c5102003040001068);
 
+    address constant USDC_SENDER = address(0xaD354CfBAa4A8572DD6Df021514a3931A8329Ef5);
+
     function setUp() public {
-        vm.createSelectFork("ETH", 22988866);
+        vm.createSelectFork("ETH", 22990827);
         uniswapV4poolManager = deployUniswapV4Core(address(0xabcd), hex"01");
 
         deployLicredity(address(0), address(uniswapV4poolManager), address(this), "Debt ETH", "DETH");
@@ -33,24 +38,48 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         _deadline = block.timestamp + 1;
     }
 
-    function test_paraswap_router() public {
+    function _getParaSwapCalldata(string memory swapType) internal view returns (bytes memory swapCalldata) {
+        string memory path = string.concat("./test/test_data/paraswap_", swapType, ".json");
+        string memory json = vm.readFile(path);
+        swapCalldata = json.parseRaw(".txParams.data");
+    }
+
+    function _getUSDC(address receiver, uint256 amount) internal {
+        vm.startPrank(USDC_SENDER);
+        IERC20(USDC).transfer(receiver, amount);
+        vm.stopPrank();
+    }
+
+    function test_paraswap_native() public {
         licredityManager.updateRouterWhitelist(PARASWAP, true);
+        bytes memory swapCalldata = _getParaSwapCalldata("native");
 
         uint256 tokenId = licredityManager.mint(licredity);
         Plan memory planner = Planner.init(tokenId);
-        planner.add(
-            Actions.DYN_CALL,
-            abi.encode(
-                PARASWAP,
-                0.05 ether,
-                hex"e3ead59e000000000000000000000000000010036c0190e009a000d0fc3541100a07380a000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000b1a2bc2ec50000000000000000000000000000000000000000000000000000000000000ae70d98000000000000000000000000000000000000000000000000000000000ae87307562b41ad7cc4471faf9512ec145401bd000000000000000000000000015ec8420000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000180000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001a09995855c00494d039ab6792f18e368e530dff9310000014000000000ff00000900000000000000000000000000000000000000000000000000000000f196187f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000d1b71758e21960000137e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b1a2bc2ec50000000000000000000000000000000000000000000000000000400065a8177fae27000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000006a000f20005980200259b80c5102003040001068"
-            )
-        );
+        planner.add(Actions.DYN_CALL, abi.encodePacked(abi.encode(PARASWAP, 5 ether), swapCalldata));
 
         ActionsData[] memory calls = planner.finalize();
 
-        licredityManager.execute{ value: 0.05 ether }(calls, _deadline);
+        licredityManager.execute{value: 5 ether}(calls, _deadline);
 
         assertGe(IERC20(address(USDC)).balanceOf(address(this)), 0);
+    }
+
+    function test_paraswap_token() public {
+        licredityManager.updateRouterWhitelist(PARASWAP, true);
+        licredityManager.updateTokenApporve(USDC, PARASWAP, type(uint256).max);
+        _getUSDC(address(licredityManager), 1000e6);
+
+        bytes memory swapCalldata = _getParaSwapCalldata("token");
+
+        uint256 tokenId = licredityManager.mint(licredity);
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DYN_CALL, abi.encodePacked(abi.encode(PARASWAP, 0), swapCalldata));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        licredityManager.execute(calls, _deadline);
+
+        assertGe(address(licredityManager).balance, 0);
     }
 }
