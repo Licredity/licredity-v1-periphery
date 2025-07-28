@@ -30,5 +30,6 @@ library Actions {
     uint256 public constant UNISWAP_V4_TAKE = 0x0c;
     uint256 public constant UNISWAP_V4_SETTLE = 0x0d;
     uint256 public constant UNISWAP_V4_SWEEP = 0x0e;
-    // uint256 public constant DYN_CALL = 0x0d;
+
+    uint256 public constant DYN_CALL = 0x0f;
 }

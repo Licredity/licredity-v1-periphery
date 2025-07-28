@@ -12,6 +12,7 @@ contract PositionManagerConfig is IPositionManagerConfig {
     IAllowanceTransfer immutable permit2;
 
     mapping(ILicredity pool => bool) internal isWhitelisted;
+    mapping(address router => bool) internal isWhitelistedRouter;
 
     modifier onlyGovernor() {
         _onlyGovernor();
@@ -85,7 +86,20 @@ contract PositionManagerConfig is IPositionManagerConfig {
         permit2.approve(token, spender, amount, expiration);
     }
 
-    function updateTokenApporve(address token, address spender, uint160 amount) external onlyGovernor {
+    function updateTokenApporve(address token, address spender, uint256 amount) external onlyGovernor {
         IERC20(token).approve(spender, amount);
+    }
+
+    function updateRouterWhitelist(address router, bool isWhitelist) external onlyGovernor {
+        assembly ("memory-safe") {
+            router := and(router, 0xffffffffffffffffffffffffffffffffffffffff)
+            mstore(0x00, router)
+            mstore(0x20, isWhitelistedRouter.slot)
+            let routerSlot := keccak256(0x00, 0x40)
+            sstore(routerSlot, isWhitelist)
+
+            mstore(0x00, isWhitelist)
+            log2(0x00, 0x20, 0x1d385e8b5fc7b838eaf8aa9fc35810021a7fbda8f135edd7cc17fc4a6bb69d77, router)
+        }
     }
 }

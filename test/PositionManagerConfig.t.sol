@@ -74,4 +74,18 @@ contract PositionManagerConfigTest is Test {
 
         assertFalse(config.loadPoolWhitelist(ILicredity(pool)));
     }
+
+    function test_updateRouterWhitelist(address router) public {
+        vm.expectEmit(true, false, false, true);
+        emit IPositionManagerConfig.UpdateRouterWhitelist(router, true);
+        config.updateRouterWhitelist(router, true);
+
+        assertTrue(config.loadRouterWhitelist(router));
+
+        vm.expectEmit(true, false, false, true);
+        emit IPositionManagerConfig.UpdateRouterWhitelist(router, false);
+        config.updateRouterWhitelist(router, false);
+
+        assertFalse(config.loadRouterWhitelist(router));
+    }
 }

@@ -6,6 +6,7 @@ import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
 import {ERC721} from "./base/ERC721.sol";
 import {UniswapV4Router} from "./base/UniswapV4Router.sol";
 import {LicredityRouter} from "./base/LicredityRouter.sol";
+import {Multicall_v4} from "./base/Multicall_v4.sol";
 import {PositionManagerConfig} from "./PositionManagerConfig.sol";
 import {PositionInfo, PositionInfoLibrary} from "./types/PositionInfo.sol";
 import {ActionsData, Actions} from "./types/Actions.sol";
@@ -20,6 +21,7 @@ import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 contract PositionManager is
     IPositionManager,
     IUnlockCallback,
+    Multicall_v4,
     UniswapV4Router,
     LicredityRouter,
     ERC721,
@@ -98,9 +100,9 @@ contract PositionManager is
         _depositFungible(info.pool(), info.positionId(), msg.sender, token, amount);
     }
 
-    function depositNonFungible(uint256 tokenId, address token, uint256 depsoittTokenId) external {
+    function depositNonFungible(uint256 tokenId, address token, uint256 depsoitTokenId) external {
         PositionInfo info = positionInfo[tokenId];
-        _depositNonFungible(info.pool(), info.positionId(), msg.sender, token, depsoittTokenId);
+        _depositNonFungible(info.pool(), info.positionId(), msg.sender, token, depsoitTokenId);
     }
 
     function execute(ActionsData[] calldata inputs, uint256 deadline)
@@ -197,6 +199,34 @@ contract PositionManager is
         } else if (action == Actions.UNISWAP_V4_POOL_MANAGER_CALL) {
             _uniswapPoolManagerCall(params);
             return;
+        } else if (action == Actions.DYN_CALL) {
+            // abi.decode(params, (address target, uint256 value, bytes data));
+            assembly ("memory-safe") {
+                let fmp := mload(0x40)
+                let target := calldataload(params.offset)
+
+                // Check if target is whitelisted
+                mstore(0x00, target)
+                mstore(0x20, isWhitelistedRouter.slot)
+                let routerSlot := keccak256(0x00, 0x40)
+
+                if iszero(sload(routerSlot)) {
+                    mstore(0x00, 0xceb35066) // `DynCallTargetError()`
+                    revert(0x1c, 0x04)
+                }
+
+                let value := calldataload(add(params.offset, 0x20))
+                let dataLen := calldataload(add(params.offset, 0x60))
+
+                calldatacopy(fmp, add(params.offset, 0x80), dataLen)
+
+                let success := call(gas(), target, value, fmp, dataLen, 0x00, 0x00)
+
+                if iszero(success) {
+                    mstore(0x00, 0x674ac132) // `CallFailure()`
+                    revert(0x1c, 0x04)
+                }
+            }
         }
     }
 
@@ -245,4 +275,6 @@ contract PositionManager is
             IERC20(Currency.unwrap(currency)).transferFrom(payer, recipient, amount);
         }
     }
+
+    receive() external payable {}
 }

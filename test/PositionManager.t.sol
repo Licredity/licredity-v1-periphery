@@ -95,6 +95,14 @@ contract PositionManagerTest is PeripheryDeployers {
         manager.depositFungible{value: 0.1 ether}(tokenId, address(0), 0.1 ether);
     }
 
+    // function test_multicall_depositFungible_native() public {
+    //     bytes[] memory calls = new bytes[](2);
+    //     calls[0] = abi.encodeCall(IPositionManager.mint, (ILicredity(address(licredity))));
+    //     calls[1] = abi.encodeCall(IPositionManager.depositFungible, (1, address(0), 0.1 ether));
+
+    //     manager.multicall{value: 0.1 ether}(calls);
+    // }
+
     function test_depositFungible_erc20() public {
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
@@ -104,6 +112,17 @@ contract PositionManagerTest is PeripheryDeployers {
         vm.expectEmit(true, true, false, true);
         emit ILicredity.DepositFungible(1, Fungible.wrap(address(testToken)), 10 ether);
         manager.depositFungible(tokenId, address(testToken), 10 ether);
+    }
+
+    function test_multicall_depositFungible_erc20() public {
+        testToken.mint(address(this), 10 ether);
+        testToken.approve(address(manager), 10 ether);
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(IPositionManager.mint, (ILicredity(address(licredity))));
+        calls[1] = abi.encodeCall(IPositionManager.depositFungible, (1, address(testToken), 10 ether));
+
+        manager.multicall(calls);
     }
 
     function test_depositNonFungible() public {
@@ -308,45 +327,62 @@ contract PositionManagerTest is PeripheryDeployers {
         assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
     }
 
-    // function test_dynCall(uint256 amount, uint128 value1, uint128 value2, bytes calldata data1, bytes calldata data2)
-    //     public
-    // {
-    //     amount = bound(amount, 1, 10000 ether - 1);
+    function test_dynCall_notWhitelisted() public {
+        address target = address(new DynTargetMock());
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DYN_CALL, abi.encode(target, 0, hex"01"));
 
-    //     address target1 = address(new DynTargetMock());
-    //     address target2 = address(new DynTargetMock());
+        ActionsData[] memory calls = planner.finalize();
 
-    //     vm.deal(address(manager), uint256(value1) + uint256(value2));
+        vm.expectRevert(IPositionManager.DynCallTargetError.selector);
+        manager.execute(calls, _deadline);
+    }
 
-    //     uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+    function test_dynCall(uint256 amount, uint128 value1, uint128 value2, bytes calldata data1, bytes calldata data2)
+        public
+    {
+        amount = bound(amount, 1, 10000 ether - 1);
 
-    //     Plan memory planner = Planner.init(tokenId);
-    //     planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(licredity), amount));
-    //     planner.add(Actions.DYN_CALL, abi.encode(target1, value1, data1));
-    //     planner.add(Actions.DYN_CALL, abi.encode(target2, value2, data2));
-    //     planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, amount, true));
+        address target1 = address(new DynTargetMock());
+        address target2 = address(new DynTargetMock());
 
-    //     ActionsData[] memory calls = planner.finalize();
+        manager.updateRouterWhitelist(address(target1), true);
+        manager.updateRouterWhitelist(address(target2), true);
 
-    //     vm.expectCall(address(target1), value1, data1);
-    //     vm.expectCall(address(target2), value2, data2);
+        vm.deal(address(manager), uint256(value1) + uint256(value2));
 
-    //     manager.execute(calls, _deadline);
-    // }
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
-    // function test_dynCall_fail(bytes calldata data) public {
-    //     DynTargetMock target = new DynTargetMock();
-    //     target.setShouldThrow(true);
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(licredity), amount));
+        planner.add(Actions.DYN_CALL, abi.encode(target1, value1, data1));
+        planner.add(Actions.DYN_CALL, abi.encode(target2, value2, data2));
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, amount, true));
 
-    //     uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+        ActionsData[] memory calls = planner.finalize();
 
-    //     Plan memory planner = Planner.init(tokenId);
-    //     planner.add(Actions.DYN_CALL, abi.encode(target, 0, data));
-    //     ActionsData[] memory calls = planner.finalize();
+        vm.expectCall(address(target1), value1, data1);
+        vm.expectCall(address(target2), value2, data2);
 
-    //     vm.expectRevert(CallFailure.selector);
-    //     manager.execute(calls, _deadline);
-    // }
+        manager.execute(calls, _deadline);
+    }
+
+    function test_dynCall_fail(bytes calldata data) public {
+        DynTargetMock target = new DynTargetMock();
+        manager.updateRouterWhitelist(address(target), true);
+
+        target.setShouldThrow(true);
+
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DYN_CALL, abi.encode(target, 0, data));
+        ActionsData[] memory calls = planner.finalize();
+
+        vm.expectRevert(CallFailure.selector);
+        manager.execute(calls, _deadline);
+    }
 
     // function test_seize() public {
     //     testToken.mint(address(this), 100 ether);

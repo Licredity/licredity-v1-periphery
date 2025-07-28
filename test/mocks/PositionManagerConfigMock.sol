@@ -19,4 +19,8 @@ contract PositionManagerConfigMock is PositionManagerConfig {
     function loadPoolWhitelist(ILicredity pool) external view returns (bool) {
         return isWhitelisted[pool];
     }
+
+    function loadRouterWhitelist(address router) external view returns (bool) {
+        return isWhitelistedRouter[router];
+    }
 }
