@@ -12,6 +12,17 @@ contract CalldataDecoderTest is Test {
         decoder = new MockCalldataDecoder();
     }
 
+    function test_fuzz_decodeCallValueAndData(uint256 _positionCallValue, bytes memory _positionCalldata)
+        external
+        view
+    {
+        bytes memory params = abi.encode(_positionCallValue, _positionCalldata);
+        (uint256 positionValue, bytes memory positionParams) = decoder.decodeCallValueAndData(params);
+
+        assertEq(positionValue, _positionCallValue);
+        assertEq(positionParams, _positionCalldata);
+    }
+
     function test_fuzz_decodeDeposit(bool _boolean, address _token, uint256 _amount) external view {
         bytes memory params = abi.encode(_boolean, _token, _amount);
         (bool boolean, address token, uint256 amount) = decoder.decodeDeposit(params);
@@ -52,5 +63,13 @@ contract CalldataDecoderTest is Test {
         uint256 tokenId = decoder.decodeSeizeTokenId(params);
 
         assertEq(tokenId, _tokenId);
+    }
+
+    function _removeFinalByte(bytes memory params) internal pure returns (bytes memory result) {
+        result = new bytes(params.length - 1);
+        // dont copy the final byte
+        for (uint256 i = 0; i < params.length - 2; i++) {
+            result[i] = params[i];
+        }
     }
 }

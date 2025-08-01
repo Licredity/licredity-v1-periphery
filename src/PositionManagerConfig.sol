@@ -2,12 +2,17 @@
 pragma solidity =0.8.30;
 
 import {IPositionManagerConfig} from "./interfaces/IPositionManagerConfig.sol";
+import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
+import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
 contract PositionManagerConfig is IPositionManagerConfig {
     address internal governor;
     address internal nextGovernor;
+    IAllowanceTransfer immutable permit2;
+
     mapping(ILicredity pool => bool) internal isWhitelisted;
+    mapping(address router => bool) internal isWhitelistedRouter;
 
     modifier onlyGovernor() {
         _onlyGovernor();
@@ -24,8 +29,9 @@ contract PositionManagerConfig is IPositionManagerConfig {
         }
     }
 
-    constructor(address _governor) {
+    constructor(address _governor, IAllowanceTransfer _permit2) {
         governor = _governor;
+        permit2 = _permit2;
     }
 
     /// @notice Appoints the next governor
@@ -59,7 +65,7 @@ contract PositionManagerConfig is IPositionManagerConfig {
         }
     }
 
-    function updatePoolWhitelist(address pool, bool isWhitelist) external {
+    function updatePoolWhitelist(address pool, bool isWhitelist) external onlyGovernor {
         assembly ("memory-safe") {
             pool := and(pool, 0xffffffffffffffffffffffffffffffffffffffff)
             mstore(0x00, pool)
@@ -69,6 +75,31 @@ contract PositionManagerConfig is IPositionManagerConfig {
 
             mstore(0x00, isWhitelist)
             log2(0x00, 0x20, 0x91ef39ee8c3c89707b54eb6b6f42111e61eb0e8f3c3bd73e3c3b9c0340d4715f, pool)
+        }
+    }
+
+    function updateTokenPermit2(address token, address spender, uint160 amount, uint48 expiration)
+        external
+        onlyGovernor
+    {
+        IERC20(token).approve(address(permit2), amount);
+        permit2.approve(token, spender, amount, expiration);
+    }
+
+    function updateTokenApporve(address token, address spender, uint256 amount) external onlyGovernor {
+        IERC20(token).approve(spender, amount);
+    }
+
+    function updateRouterWhitelist(address router, bool isWhitelist) external onlyGovernor {
+        assembly ("memory-safe") {
+            router := and(router, 0xffffffffffffffffffffffffffffffffffffffff)
+            mstore(0x00, router)
+            mstore(0x20, isWhitelistedRouter.slot)
+            let routerSlot := keccak256(0x00, 0x40)
+            sstore(routerSlot, isWhitelist)
+
+            mstore(0x00, isWhitelist)
+            log2(0x00, 0x20, 0x1d385e8b5fc7b838eaf8aa9fc35810021a7fbda8f135edd7cc17fc4a6bb69d77, router)
         }
     }
 }

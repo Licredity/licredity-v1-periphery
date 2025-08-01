@@ -2,23 +2,32 @@
 pragma solidity =0.8.30;
 
 import {IPositionManager} from "./interfaces/IPositionManager.sol";
+import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
 import {ERC721} from "./base/ERC721.sol";
+import {UniswapV4Router} from "./base/UniswapV4Router.sol";
+import {LicredityRouter} from "./base/LicredityRouter.sol";
+import {Multicall_v4} from "./base/Multicall_v4.sol";
 import {PositionManagerConfig} from "./PositionManagerConfig.sol";
 import {PositionInfo, PositionInfoLibrary} from "./types/PositionInfo.sol";
 import {ActionsData, Actions} from "./types/Actions.sol";
-import {ActionConstants} from "./libraries/ActionsConstants.sol";
+import {ActionConstants} from "./libraries/ActionConstants.sol";
 import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
-import {LicredityDispatcher} from "./libraries/LicredityDispatcher.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
+import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IUnlockCallback} from "@uniswap-v4-core/interfaces/callback/IUnlockCallback.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
-contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionManagerConfig {
+contract PositionManager is
+    IPositionManager,
+    IUnlockCallback,
+    Multicall_v4,
+    UniswapV4Router,
+    LicredityRouter,
+    ERC721,
+    PositionManagerConfig
+{
     using CalldataDecoder for bytes;
-    using LicredityDispatcher for ILicredity;
-
-    IPoolManager public immutable uniswapV4PoolManager;
 
     address transient lockedBy;
     ILicredity transient usingLicredity;
@@ -28,12 +37,17 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
 
     mapping(uint256 tokenId => PositionInfo info) internal positionInfo;
 
-    constructor(address _governor, IPoolManager _poolManager)
+    constructor(
+        address _governor,
+        IPoolManager _uniswapV4poolManager,
+        address _uniswapV4PostionManager,
+        IAllowanceTransfer _permit2
+    )
+        UniswapV4Router(_uniswapV4poolManager, _uniswapV4PostionManager)
         ERC721("Licredity v1 Position NFT", "LICREDITY-V1-POSM")
-        PositionManagerConfig(_governor)
-    {
-        uniswapV4PoolManager = _poolManager;
-    }
+        PositionManagerConfig(_governor, _permit2)
+        LicredityRouter()
+    {}
 
     // TODO: May be not implemented
     function tokenURI(uint256) public pure override returns (string memory) {
@@ -83,12 +97,12 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
 
     function depositFungible(uint256 tokenId, address token, uint256 amount) external payable {
         PositionInfo info = positionInfo[tokenId];
-        info.pool().depositFungible(info.positionId(), msg.sender, token, amount);
+        _depositFungible(info.pool(), info.positionId(), msg.sender, token, amount);
     }
 
-    function depositNonFungible(uint256 tokenId, address token, uint256 depsoittTokenId) external {
+    function depositNonFungible(uint256 tokenId, address token, uint256 depsoitTokenId) external {
         PositionInfo info = positionInfo[tokenId];
-        info.pool().depositNonFungible(info.positionId(), msg.sender, token, depsoittTokenId);
+        _depositNonFungible(info.pool(), info.positionId(), msg.sender, token, depsoitTokenId);
     }
 
     function execute(ActionsData[] calldata inputs, uint256 deadline)
@@ -105,28 +119,38 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
                 usingLicredityPositionId = positionInfo[input.tokenId].positionId();
 
                 usingLicredity.unlock(input.unlockData);
+
+                usingLicredity = ILicredity(address(0));
+                usingLicredityPositionId = 0;
             } else {
-                uniswapV4PoolManager.unlock(input.unlockData);
+                poolManager.unlock(input.unlockData);
             }
         }
     }
 
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
-        (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
-        uint256 numActions = actions.length;
-        require(numActions == params.length, InputLengthMismatch());
-        if (msg.sender == address(uniswapV4PoolManager)) {
-            // for (uint256 actionIndex = 0; actionIndex < numActions; actionIndex++) {
-            //     uint256 action = uint8(actions[actionIndex]);
+        if (msg.sender == address(poolManager)) {
+            (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
+            uint256 numActions = actions.length;
+            require(numActions == params.length, InputLengthMismatch());
 
-            //     _handleUniswapV4Action(action, params[actionIndex]);
-            // }
-        } else {
+            for (uint256 actionIndex = 0; actionIndex < numActions; actionIndex++) {
+                uint256 action = uint8(actions[actionIndex]);
+
+                _handleUniswapV4Action(action, params[actionIndex]);
+            }
+        } else if (msg.sender == address(usingLicredity)) {
+            (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
+            uint256 numActions = actions.length;
+            require(numActions == params.length, InputLengthMismatch());
+
             for (uint256 actionIndex = 0; actionIndex < numActions; actionIndex++) {
                 uint256 action = uint8(actions[actionIndex]);
 
                 _handleLicredityAction(action, params[actionIndex]);
             }
+        } else {
+            revert NotSafeCallback();
         }
 
         return "";
@@ -135,52 +159,62 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
     function _handleLicredityAction(uint256 action, bytes calldata params) internal {
         if (action == Actions.DEPOSIT_FUNGIBLE) {
             (bool payerIsUser, address token, uint256 amount) = params.decodeDeposit();
-            usingLicredity.depositFungible(usingLicredityPositionId, _mapPayer(payerIsUser), token, amount);
+            _depositFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, amount);
 
             return;
         } else if (action == Actions.DEPOSIT_NON_FUNGIBLE) {
             (bool payerIsUser, address token, uint256 tokenId) = params.decodeDeposit();
-            usingLicredity.depositNonFungible(usingLicredityPositionId, _mapPayer(payerIsUser), token, tokenId);
+            _depositNonFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, tokenId);
 
             return;
         } else if (action == Actions.WITHDRAW_FUNGIBLE) {
             (address recipient, address token, uint256 amount) = params.decodeWithdraw();
-            usingLicredity.withdrawFungible(usingLicredityPositionId, _mapRecipient(recipient), token, amount);
+            _withdrawFungible(usingLicredity, usingLicredityPositionId, _mapRecipient(recipient), token, amount);
 
             return;
         } else if (action == Actions.WITHDRAW_NON_FUNGIBLE) {
             (address recipient, address token, uint256 tokenId) = params.decodeWithdraw();
-            usingLicredity.withdrawNonFungible(usingLicredityPositionId, _mapRecipient(recipient), token, tokenId);
+            _withdrawNonFungible(usingLicredity, usingLicredityPositionId, _mapRecipient(recipient), token, tokenId);
             return;
         } else if (action == Actions.INCREASE_DEBT_AMOUNT) {
             (address recipient, uint256 amount) = params.decodeIncreaseDebt();
-            usingLicredity.increaseDebtAmount(usingLicredityPositionId, _mapRecipient(recipient), amount);
+            _increaseDebtAmount(usingLicredity, usingLicredityPositionId, _mapRecipient(recipient), amount);
             return;
         } else if (action == Actions.INCREASE_DEBT_SHARE) {
             (address recipient, uint256 shares) = params.decodeIncreaseDebt();
-            usingLicredity.increaseDebtShare(usingLicredityPositionId, _mapRecipient(recipient), shares);
+            _increaseDebtShare(usingLicredity, usingLicredityPositionId, _mapRecipient(recipient), shares);
             return;
         } else if (action == Actions.DECREASE_DEBT_AMOUNT) {
             (bool payerIsUser, uint256 amount, bool useBalance) = params.decodeDecreaseDebt();
-            usingLicredity.decreaseDebtAmount(usingLicredityPositionId, _mapPayer(payerIsUser), amount, useBalance);
+            _decreaseDebtAmount(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), amount, useBalance);
             return;
         } else if (action == Actions.DECREASE_DEBT_SHARE) {
             (bool payerIsUser, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
-            usingLicredity.decreaseDebtShare(usingLicredityPositionId, _mapPayer(payerIsUser), shares, useBalance);
+            _decreaseDebtShare(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), shares, useBalance);
             return;
-        } else if (action == Actions.SEIZE) {
-            uint256 seizedTokenId = params.decodeSeizeTokenId();
-            uint256 seizedPositionId = positionInfo[seizedTokenId].positionId();
-
-            usingLicredity.seize(seizedPositionId);
-            usingLicredityPositionId = seizedPositionId;
-
-            _transfer(msgSender(), seizedTokenId);
+        } else if (action == Actions.UNISWAP_V4_POSITION_MANAGER_CALL) {
+            (uint256 positionValue, bytes calldata positionParams) = params.decodeCallValueAndData();
+            _positionManagerCall(positionValue, positionParams);
+            return;
+        } else if (action == Actions.UNISWAP_V4_POOL_MANAGER_CALL) {
+            _uniswapPoolManagerCall(params);
             return;
         } else if (action == Actions.DYN_CALL) {
+            // abi.decode(params, (address target, uint256 value, bytes data));
             assembly ("memory-safe") {
                 let fmp := mload(0x40)
                 let target := calldataload(params.offset)
+
+                // Check if target is whitelisted
+                mstore(0x00, target)
+                mstore(0x20, isWhitelistedRouter.slot)
+                let routerSlot := keccak256(0x00, 0x40)
+
+                if iszero(sload(routerSlot)) {
+                    mstore(0x00, 0xceb35066) // `DynCallTargetError()`
+                    revert(0x1c, 0x04)
+                }
+
                 let value := calldataload(add(params.offset, 0x20))
                 let dataLen := calldataload(add(params.offset, 0x60))
 
@@ -193,7 +227,24 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
                     revert(0x1c, 0x04)
                 }
             }
+        }
+    }
 
+    function _handleUniswapV4Action(uint256 action, bytes calldata params) internal {
+        if (action == Actions.UNISWAP_V4_SWAP) {
+            _swap(params);
+            return;
+        } else if (action == Actions.UNISWAP_V4_SETTLE) {
+            (Currency currency, uint256 amount, bool payerIsUser) = params.decodeCurrencyUint256AndBool();
+            _settle(currency, _mapPayer(payerIsUser), _mapSettleAmount(amount, currency));
+            return;
+        } else if (action == Actions.UNISWAP_V4_TAKE) {
+            (Currency currency, address recipient, uint256 amount) = params.decodeCurrencyAddressAndUint256();
+            _take(currency, _mapRecipient(recipient), _mapTakeAmount(amount, currency));
+            return;
+        } else if (action == Actions.UNISWAP_V4_SWEEP) {
+            (Currency currency, address to) = params.decodeCurrencyAndAddress();
+            _sweep(currency, _mapRecipient(to));
             return;
         }
     }
@@ -213,4 +264,17 @@ contract PositionManager is IPositionManager, IUnlockCallback, ERC721, PositionM
     function _mapPayer(bool payerIsUser) internal view returns (address) {
         return payerIsUser ? msgSender() : address(this);
     }
+
+    function _pay(Currency currency, address payer, address recipient, uint256 amount)
+        internal
+        override(LicredityRouter, UniswapV4Router)
+    {
+        if (payer == address(this)) {
+            currency.transfer(recipient, amount);
+        } else {
+            IERC20(Currency.unwrap(currency)).transferFrom(payer, recipient, amount);
+        }
+    }
+
+    receive() external payable {}
 }

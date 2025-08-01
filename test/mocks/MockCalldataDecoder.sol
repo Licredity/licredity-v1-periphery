@@ -41,4 +41,12 @@ contract MockCalldataDecoder {
     function decodeSeizeTokenId(bytes calldata params) external pure returns (uint256 tokenId) {
         return CalldataDecoder.decodeSeizeTokenId(params);
     }
+
+    function decodeCallValueAndData(bytes calldata params)
+        external
+        pure
+        returns (uint256 positionValue, bytes calldata positionParams)
+    {
+        return CalldataDecoder.decodeCallValueAndData(params);
+    }
 }

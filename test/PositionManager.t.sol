@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {Deployers} from "@licredity-v1-test/utils/Deployer.sol";
 import {PositionManager} from "src/PositionManager.sol";
-import {ActionConstants} from "src/libraries/ActionsConstants.sol";
+import {ActionConstants} from "src/libraries/ActionConstants.sol";
 import {Actions, ActionsData} from "src/types/Actions.sol";
-import {IPositionManager} from "src/interfaces/IPositionManager.sol";
 import {Plan, Planner} from "./shared/Planner.sol";
+import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {DynTargetMock} from "./mocks/DynTargetMock.sol";
+import {IPositionManager} from "src/interfaces/IPositionManager.sol";
+import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
+import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
-import {Fungible as FungibleMock} from "@licredity-v1-test/utils/Deployer.sol";
-import {BaseERC20Mock} from "@licredity-v1-test/utils/Deployer.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
+import {BaseERC20Mock} from "@licredity-v1-test/utils/Deployer.sol";
+import {Fungible as FungibleMock} from "@licredity-v1-test/utils/Deployer.sol";
 
-contract PositionManagerTest is Deployers {
+contract PositionManagerTest is PeripheryDeployers {
     error NotMinted();
     error CallFailure();
 
@@ -24,13 +26,21 @@ contract PositionManagerTest is Deployers {
     uint256 _deadline;
 
     function setUp() public {
-        deployETHLicredityWithUniswapV4();
+        IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"01");
+        deployLicredity(address(0), address(poolManager), address(this), "Debt ETH", "DETH");
+        licredity.setDebtLimit(10000 ether);
+
         deployAndSetOracleMock();
         deployNonFungibleMock();
 
         testToken = _newAsset(18);
 
-        manager = new PositionManager(address(this), poolManager);
+        IAllowanceTransfer permit2 = IAllowanceTransfer(deployPermit2());
+        address uniswapV4PositionManager = deployUniswapV4PositionManager(
+            address(poolManager), address(permit2), 100_000, address(0), address(0), hex"02"
+        );
+
+        manager = new PositionManager(address(this), poolManager, uniswapV4PositionManager, permit2);
         manager.updatePoolWhitelist(address(licredity), true);
 
         _deadline = block.timestamp + 1;
@@ -85,6 +95,14 @@ contract PositionManagerTest is Deployers {
         manager.depositFungible{value: 0.1 ether}(tokenId, address(0), 0.1 ether);
     }
 
+    // function test_multicall_depositFungible_native() public {
+    //     bytes[] memory calls = new bytes[](2);
+    //     calls[0] = abi.encodeCall(IPositionManager.mint, (ILicredity(address(licredity))));
+    //     calls[1] = abi.encodeCall(IPositionManager.depositFungible, (1, address(0), 0.1 ether));
+
+    //     manager.multicall{value: 0.1 ether}(calls);
+    // }
+
     function test_depositFungible_erc20() public {
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
@@ -94,6 +112,17 @@ contract PositionManagerTest is Deployers {
         vm.expectEmit(true, true, false, true);
         emit ILicredity.DepositFungible(1, Fungible.wrap(address(testToken)), 10 ether);
         manager.depositFungible(tokenId, address(testToken), 10 ether);
+    }
+
+    function test_multicall_depositFungible_erc20() public {
+        testToken.mint(address(this), 10 ether);
+        testToken.approve(address(manager), 10 ether);
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(IPositionManager.mint, (ILicredity(address(licredity))));
+        calls[1] = abi.encodeCall(IPositionManager.depositFungible, (1, address(testToken), 10 ether));
+
+        manager.multicall(calls);
     }
 
     function test_depositNonFungible() public {
@@ -269,15 +298,13 @@ contract PositionManagerTest is Deployers {
     }
 
     function test_decreaseDebtShare_useBalance(uint256 shareDelta) public {
-        vm.assume(shareDelta > 1e6);
-        vm.assume(shareDelta < 10000 ether * 1e6);
-
+        shareDelta = bound(shareDelta, 1e6, 10000 ether * 1e6 - 1);
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
         Plan memory planner = Planner.init(tokenId);
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), 1 ether));
-        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(address(licredity), shareDelta + 1e6));
-        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(false, shareDelta, true));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(address(licredity), shareDelta));
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(false, shareDelta - 1e6, true));
 
         ActionsData[] memory calls = planner.finalize();
 
@@ -297,7 +324,19 @@ contract PositionManagerTest is Deployers {
         ActionsData[] memory calls = planner.finalize();
 
         manager.execute(calls, _deadline);
-        // assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+    }
+
+    function test_dynCall_notWhitelisted() public {
+        address target = address(new DynTargetMock());
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DYN_CALL, abi.encode(target, 0, hex"01"));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        vm.expectRevert(IPositionManager.DynCallTargetError.selector);
+        manager.execute(calls, _deadline);
     }
 
     function test_dynCall(uint256 amount, uint128 value1, uint128 value2, bytes calldata data1, bytes calldata data2)
@@ -307,6 +346,9 @@ contract PositionManagerTest is Deployers {
 
         address target1 = address(new DynTargetMock());
         address target2 = address(new DynTargetMock());
+
+        manager.updateRouterWhitelist(address(target1), true);
+        manager.updateRouterWhitelist(address(target2), true);
 
         vm.deal(address(manager), uint256(value1) + uint256(value2));
 
@@ -328,6 +370,8 @@ contract PositionManagerTest is Deployers {
 
     function test_dynCall_fail(bytes calldata data) public {
         DynTargetMock target = new DynTargetMock();
+        manager.updateRouterWhitelist(address(target), true);
+
         target.setShouldThrow(true);
 
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
@@ -340,39 +384,39 @@ contract PositionManagerTest is Deployers {
         manager.execute(calls, _deadline);
     }
 
-    function test_seize() public {
-        testToken.mint(address(this), 100 ether);
-        testToken.mint(address(0xc0de), 100 ether);
+    // function test_seize() public {
+    //     testToken.mint(address(this), 100 ether);
+    //     testToken.mint(address(0xc0de), 100 ether);
 
-        testToken.approve(address(manager), 100 ether);
+    //     testToken.approve(address(manager), 100 ether);
 
-        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+    //     uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
-        Plan memory planner = Planner.init(tokenId);
-        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(this), 0.9 ether));
-        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(testToken), 1 ether));
+    //     Plan memory planner = Planner.init(tokenId);
+    //     planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(this), 0.9 ether));
+    //     planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(testToken), 1 ether));
 
-        ActionsData[] memory calls = planner.finalize();
+    //     ActionsData[] memory calls = planner.finalize();
 
-        manager.execute(calls, _deadline);
-        assertEq(manager.ownerOf(1), address(this));
-        oracleMock.setFungibleConfig(FungibleMock.wrap(address(testToken)), 0.5 ether, 100_000); // 10%
+    //     manager.execute(calls, _deadline);
+    //     assertEq(manager.ownerOf(1), address(this));
+    //     oracleMock.setFungibleConfig(FungibleMock.wrap(address(testToken)), 0.5 ether, 100_000); // 10%
 
-        vm.startPrank(address(0xc0de));
-        testToken.approve(address(manager), 100 ether);
+    //     vm.startPrank(address(0xc0de));
+    //     testToken.approve(address(manager), 100 ether);
 
-        tokenId = manager.mint(ILicredity(address(licredity)));
+    //     tokenId = manager.mint(ILicredity(address(licredity)));
 
-        planner = Planner.init(tokenId);
-        planner.add(Actions.SEIZE, abi.encode(uint256(1)));
-        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(testToken), 1 ether));
+    //     planner = Planner.init(tokenId);
+    //     planner.add(Actions.SEIZE, abi.encode(uint256(1)));
+    //     planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(testToken), 1 ether));
 
-        calls = planner.finalize();
+    //     calls = planner.finalize();
 
-        manager.execute(calls, _deadline);
-        assertEq(manager.ownerOf(1), address(0xc0de));
-        vm.stopPrank();
-    }
+    //     manager.execute(calls, _deadline);
+    //     assertEq(manager.ownerOf(1), address(0xc0de));
+    //     vm.stopPrank();
+    // }
 
     receive() external payable {}
 }

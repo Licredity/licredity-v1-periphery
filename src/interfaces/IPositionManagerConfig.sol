@@ -18,7 +18,29 @@ interface IPositionManagerConfig {
     /// @param isWhitelisted Whether the pool is whitelisted
     event UpdatePoolWhitelist(address indexed pool, bool isWhitelisted);
 
+    /// @notice Emitted when the router is whitelisted
+    /// @param router The router
+    /// @param isWhitelisted Whether the router is whitelisted
+    event UpdateRouterWhitelist(address indexed router, bool isWhitelisted);
+
     /// @notice Registers a pool
     /// @param pool The hook address
     function updatePoolWhitelist(address pool, bool isWhitelisted) external;
+
+    /// @notice Registers a router
+    /// @param router The router address
+    function updateRouterWhitelist(address router, bool isWhitelisted) external;
+
+    /// @notice Approve the permit2 address for token
+    /// @param token The token address
+    /// @param spender The spender address
+    /// @param amount The approved amount
+    /// @param expiration The permit2 expiration
+    function updateTokenPermit2(address token, address spender, uint160 amount, uint48 expiration) external;
+
+    /// @notice Approve the spender for token
+    /// @param token The token address
+    /// @param spender The spender address
+    /// @param amount The approved amount
+    function updateTokenApporve(address token, address spender, uint256 amount) external;
 }
