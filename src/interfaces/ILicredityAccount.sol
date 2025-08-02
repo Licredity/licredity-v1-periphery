@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.24;
 
+import {ActionsData} from "src/types/Actions.sol";
 import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IPositionManagerConfig} from "./IPositionManagerConfig.sol";
@@ -11,7 +12,7 @@ interface ILicredityAccount is IPositionManagerConfig {
     error DeadlinePassed(uint256 deadline);
     error InputLengthMismatch();
     error NotSafeCallback();
-    
+
     /// @notice Creates a new position in pool and returns its positionId
     /// @param pool Licredity pool address
     /// @return positionId of the new position in licredity pool
@@ -32,4 +33,10 @@ interface ILicredityAccount is IPositionManagerConfig {
     /// @param nonFungible Non-fungible token type
     /// @param recipient Recipient address
     function sweepNonFungible(NonFungible nonFungible, address recipient) external;
+
+    /// @notice Execute actions
+    /// @param licredity Licredity pool address
+    /// @param inputs Actions data
+    /// @param deadline Deadline
+    function execute(ILicredity licredity, ActionsData[] calldata inputs, uint256 deadline) external payable;
 }

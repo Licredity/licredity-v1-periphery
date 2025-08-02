@@ -65,7 +65,7 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
         nonFungible.transfer(recipient);
     }
 
-    function execute(ILicredity licredity, uint256 positionId, ActionsData[] calldata inputs, uint256 deadline)
+    function execute(ILicredity licredity, ActionsData[] calldata inputs, uint256 deadline)
         external
         payable
         isNotLocked
@@ -75,7 +75,6 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
             ActionsData calldata input = inputs[i];
             if (input.tokenId != 0) {
                 usingLicredity = licredity;
-                usingLicredityPositionId = positionId;
 
                 usingLicredity = ILicredity(address(0));
                 usingLicredityPositionId = 0;
@@ -133,7 +132,11 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
     }
 
     function _handleLicredityAction(uint256 action, bytes calldata params) internal {
-        if (action == Actions.DEPOSIT_FUNGIBLE) {
+        if (action == Actions.SWITCH) {
+            uint256 positionId = params.decodePositionId();
+            usingLicredityPositionId = positionId;
+            return;
+        } else if (action == Actions.DEPOSIT_FUNGIBLE) {
             (bool payerIsUser, address token, uint256 amount) = params.decodeDeposit();
             _depositFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, amount);
 
@@ -168,6 +171,9 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
             (bool payerIsUser, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
             _decreaseDebtShare(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), shares, useBalance);
             return;
+        } else if (action == Actions.SEIZE) {
+            uint256 positionId = params.decodePositionId();
+            _seize(usingLicredity, positionId);
         } else if (action == Actions.UNISWAP_V4_POSITION_MANAGER_CALL) {
             (uint256 positionValue, bytes calldata positionParams) = params.decodeCallValueAndData();
             _positionManagerCall(positionValue, positionParams);
