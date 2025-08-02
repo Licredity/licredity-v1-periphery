@@ -7,10 +7,10 @@ integrity = "9e60fdba82bc374df80db7f2951faff6467b9091873004a3d314cf0c084b3c7d"
 
 [[dependencies]]
 name = "licredity-v1-core"
-version = "1.0.0"
-url = "https://soldeer-revisions.s3.amazonaws.com/licredity-v1-core/1_0_0_09-07-2025_16:50:58_licredity-v1-core.zip"
-checksum = "03d67adfa3c99a89c0909012c84b7e1054904e4c93438979183d1648a098becb"
-integrity = "0f2dea02ed1f680e4d54607c068cc11f44aa2657ca6c69a74c09e473c1ebad29"
+version = "1.1.0"
+url = "https://soldeer-revisions.s3.amazonaws.com/licredity-v1-core/1_1_0_02-08-2025_17:40:48_licredity-v1-core.zip"
+checksum = "9439dc09a6bc998c0155bc2c4fa6b85785260fcb0503f36d7c0c0ec0d6616f6c"
+integrity = "53010ebc1963410bedfef588c53e8fe8ef22c7557dc04a77ed9c2d3c599026f9"
 
 [[dependencies]]
 name = "uniswap-v4-core"
