@@ -41,7 +41,7 @@ contract PositionManagerTest is PeripheryDeployers {
         );
 
         manager = new PositionManager(address(this), poolManager, uniswapV4PositionManager, permit2);
-        manager.updatePoolWhitelist(address(licredity), true);
+        manager.updateLicredityMarketWhitelist(address(licredity), true);
 
         _deadline = block.timestamp + 1;
 
@@ -51,7 +51,7 @@ contract PositionManagerTest is PeripheryDeployers {
     function test_mint_notWhitelist(ILicredity other) public {
         vm.assume(address(other) != address(licredity));
 
-        vm.expectRevert(IPositionManager.PoolNotWhitelisted.selector);
+        vm.expectRevert(IPositionManager.MarketNotWhitelisted.selector);
         manager.mint(other);
     }
 

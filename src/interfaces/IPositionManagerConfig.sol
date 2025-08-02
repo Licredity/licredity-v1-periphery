@@ -25,7 +25,7 @@ interface IPositionManagerConfig {
 
     /// @notice Registers a pool
     /// @param pool The hook address
-    function updatePoolWhitelist(address pool, bool isWhitelisted) external;
+    function updateLicredityMarketWhitelist(address pool, bool isWhitelisted) external;
 
     /// @notice Registers a router
     /// @param router The router address

@@ -82,7 +82,8 @@ library CalldataDecoder {
             positionParams.offset := add(_bytes.offset, 0x60)
             positionParams.length := and(calldataload(add(_bytes.offset, 0x40)), OFFSET_OR_LENGTH_MASK)
 
-            if or(invalidData, lt(add(_bytes.length, _bytes.offset), add(positionParams.offset, positionParams.length))) {
+            if or(invalidData, lt(add(_bytes.length, _bytes.offset), add(positionParams.offset, positionParams.length)))
+            {
                 mstore(0, SLICE_ERROR_SELECTOR)
                 revert(0x1c, 4)
             }

@@ -122,6 +122,10 @@ abstract contract LicredityRouter {
         licredity.seize(positionId, address(this));
     }
 
+    function _exchange(ILicredity licredity, address payer, uint256 amount, bool baseForDebt) internal {
+        // TODO: Get base fungible (not)
+    }
+
     /// @notice Abstract function for contracts to implement paying tokens to the poolManager
     /// @param token The token to settle. This is known not to be the native currency
     /// @param payer The address who should pay tokens

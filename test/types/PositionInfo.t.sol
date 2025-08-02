@@ -5,10 +5,10 @@ import {Test} from "@forge-std/Test.sol";
 import {PositionInfo, PositionInfoLibrary} from "src/types/PositionInfo.sol";
 
 contract PositionInfoTest is Test {
-    function test_Position_packedAndUnpacked(address poolAddress, uint64 positionId) public pure {
-        PositionInfo info = PositionInfoLibrary.from(poolAddress, positionId);
+    function test_Position_packedAndUnpacked(address marketAddress, uint64 positionId) public pure {
+        PositionInfo info = PositionInfoLibrary.from(marketAddress, positionId);
 
-        assertEq(address(info.pool()), poolAddress);
+        assertEq(address(info.market()), marketAddress);
         assertEq(info.positionId(), positionId);
     }
 }

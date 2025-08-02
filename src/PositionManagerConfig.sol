@@ -11,7 +11,7 @@ contract PositionManagerConfig is IPositionManagerConfig {
     address internal nextGovernor;
     IAllowanceTransfer immutable permit2;
 
-    mapping(ILicredity pool => bool) internal isWhitelisted;
+    mapping(ILicredity market => bool) internal isWhitelisted;
     mapping(address router => bool) internal isWhitelistedRouter;
 
     modifier onlyGovernor() {
@@ -65,16 +65,16 @@ contract PositionManagerConfig is IPositionManagerConfig {
         }
     }
 
-    function updatePoolWhitelist(address pool, bool isWhitelist) external onlyGovernor {
+    function updateLicredityMarketWhitelist(address market, bool isWhitelist) external onlyGovernor {
         assembly ("memory-safe") {
-            pool := and(pool, 0xffffffffffffffffffffffffffffffffffffffff)
-            mstore(0x00, pool)
+            market := and(market, 0xffffffffffffffffffffffffffffffffffffffff)
+            mstore(0x00, market)
             mstore(0x20, isWhitelisted.slot)
             let pooSlot := keccak256(0x00, 0x40)
             sstore(pooSlot, isWhitelist)
 
             mstore(0x00, isWhitelist)
-            log2(0x00, 0x20, 0x91ef39ee8c3c89707b54eb6b6f42111e61eb0e8f3c3bd73e3c3b9c0340d4715f, pool)
+            log2(0x00, 0x20, 0x91ef39ee8c3c89707b54eb6b6f42111e61eb0e8f3c3bd73e3c3b9c0340d4715f, market)
         }
     }
 
