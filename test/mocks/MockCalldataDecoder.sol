@@ -2,12 +2,13 @@
 pragma solidity ^0.8.20;
 
 import {CalldataDecoder} from "src/libraries/CalldataDecoder.sol";
+import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 
 contract MockCalldataDecoder {
     using CalldataDecoder for bytes;
 
     function decodeActionsRouterParams(bytes calldata _bytes)
-        internal
+        external
         pure
         returns (bytes calldata actions, bytes[] calldata params)
     {
@@ -38,8 +39,24 @@ contract MockCalldataDecoder {
         return CalldataDecoder.decodeDecreaseDebt(params);
     }
 
-    function decodeSeizeTokenId(bytes calldata params) external pure returns (uint256 tokenId) {
-        return CalldataDecoder.decodeSeizeTokenId(params);
+    function decodePositionId(bytes calldata params) external pure returns (uint256 tokenId) {
+        return CalldataDecoder.decodePositionId(params);
+    }
+
+    function decodeCurrencyAddressAndUint256(bytes calldata params)
+        external
+        pure
+        returns (Currency currency, address addr, uint256 amount)
+    {
+        return CalldataDecoder.decodeCurrencyAddressAndUint256(params);
+    }
+
+    function decodeCurrencyAndAddress(bytes calldata params)
+        external
+        pure
+        returns (Currency currency, address _address)
+    {
+        return CalldataDecoder.decodeCurrencyAndAddress(params);
     }
 
     function decodeCallValueAndData(bytes calldata params)
