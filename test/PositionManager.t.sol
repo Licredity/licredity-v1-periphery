@@ -312,6 +312,21 @@ contract PositionManagerTest is PeripheryDeployers {
         assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
     }
 
+    function test_decreaseDebtShare_all() public {
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), 100 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(ActionConstants.ADDRESS_THIS, 5e24));
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(false, 0, false));
+        planner.add(Actions.WITHDRAW_FUNGIBLE, abi.encode(ActionConstants.MSG_SENDER, address(0), 100 ether));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        manager.execute{value: 100 ether}(calls, _deadline);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+    }
+
     function test_decreaseDebtShare_useBalance(uint256 shareDelta) public {
         shareDelta = bound(shareDelta, 1e6, 10000 ether * 1e6 - 1);
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
@@ -338,7 +353,7 @@ contract PositionManagerTest is PeripheryDeployers {
 
         ActionsData[] memory calls = planner.finalize();
 
-        manager.execute{ value: amount * 2 }(calls, _deadline);
+        manager.execute{value: amount * 2}(calls, _deadline);
 
         IERC20(address(licredity)).approve(address(manager), amount);
         manager.decreaseDebtAmount(tokenId, amount);
@@ -353,6 +368,21 @@ contract PositionManagerTest is PeripheryDeployers {
         Plan memory planner = Planner.init(tokenId);
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(licredity), amount));
         planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, amount, true));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        manager.execute(calls, _deadline);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+    }
+
+    function test_decreaseDebtAmount_all(uint256 amount) public {
+        amount = bound(amount, 1, 10000 ether - 1);
+
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(licredity), amount));
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, 0, true));
 
         ActionsData[] memory calls = planner.finalize();
 

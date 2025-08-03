@@ -107,7 +107,7 @@ contract PositionManager is
 
     function decreaseDebtAmount(uint256 tokenId, uint256 amount) external {
         PositionInfo info = positionInfo[tokenId];
-        _decreaseDebtAmount(info.market(), info.positionId(), msg.sender, amount, false);    
+        _decreaseDebtAmount(info.market(), info.positionId(), msg.sender, amount, false);
     }
 
     function decreaseDebtShare(uint256 tokenId, uint256 shares) external {
