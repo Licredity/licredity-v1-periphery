@@ -51,7 +51,7 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         licredityManager.updateTokenPermit2(
             address(licredity), uniswapV4PositionManager, type(uint160).max, type(uint48).max
         );
-        licredityManager.updatePoolWhitelist(address(licredity), true);
+        licredityManager.updateLicredityMarketWhitelist(address(licredity), true);
 
         _deadline = block.timestamp + 1;
     }

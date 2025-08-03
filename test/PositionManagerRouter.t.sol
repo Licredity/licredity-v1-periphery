@@ -33,7 +33,7 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
 
         licredityManager =
             new PositionManager(address(this), uniswapV4poolManager, address(0), IAllowanceTransfer(PERMIT2_ADDRESS));
-        licredityManager.updatePoolWhitelist(address(licredity), true);
+        licredityManager.updateLicredityMarketWhitelist(address(licredity), true);
 
         _deadline = block.timestamp + 1;
     }

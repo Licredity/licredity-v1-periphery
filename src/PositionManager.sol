@@ -75,34 +75,34 @@ contract PositionManager is
         return lockedBy;
     }
 
-    function mint(ILicredity pool) external returns (uint256 tokenId) {
-        require(isWhitelisted[pool], PoolNotWhitelisted());
+    function mint(ILicredity market) external returns (uint256 tokenId) {
+        require(isWhitelisted[market], MarketNotWhitelisted());
 
         unchecked {
             tokenId = nextTokenId++;
         }
         _mint(msg.sender, tokenId);
 
-        uint256 positionId = pool.open();
-        positionInfo[tokenId] = PositionInfoLibrary.from(address(pool), positionId);
+        uint256 positionId = market.open();
+        positionInfo[tokenId] = PositionInfoLibrary.from(address(market), positionId);
     }
 
     function burn(uint256 tokenId) external onlyIfApproved(msg.sender, tokenId) {
         PositionInfo info = positionInfo[tokenId];
-        ILicredity pool = ILicredity(info.pool());
+        ILicredity market = ILicredity(info.market());
 
         _burn(tokenId);
-        pool.close(info.positionId());
+        market.close(info.positionId());
     }
 
     function depositFungible(uint256 tokenId, address token, uint256 amount) external payable {
         PositionInfo info = positionInfo[tokenId];
-        _depositFungible(info.pool(), info.positionId(), msg.sender, token, amount);
+        _depositFungible(info.market(), info.positionId(), msg.sender, token, amount);
     }
 
     function depositNonFungible(uint256 tokenId, address token, uint256 depsoitTokenId) external {
         PositionInfo info = positionInfo[tokenId];
-        _depositNonFungible(info.pool(), info.positionId(), msg.sender, token, depsoitTokenId);
+        _depositNonFungible(info.market(), info.positionId(), msg.sender, token, depsoitTokenId);
     }
 
     function execute(ActionsData[] calldata inputs, uint256 deadline)
@@ -115,7 +115,7 @@ contract PositionManager is
             ActionsData calldata input = inputs[i];
             if (input.tokenId != 0) {
                 require(_isApprovedOrOwner(msgSender(), input.tokenId), NotApproved(msgSender()));
-                usingLicredity = positionInfo[input.tokenId].pool();
+                usingLicredity = positionInfo[input.tokenId].market();
                 usingLicredityPositionId = positionInfo[input.tokenId].positionId();
 
                 usingLicredity.unlock(input.unlockData);

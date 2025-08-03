@@ -8,7 +8,7 @@ import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 interface IPositionManager is IPositionManagerConfig {
     error ContractLocked();
     error DeadlinePassed(uint256 deadline);
-    error PoolNotWhitelisted();
+    error MarketNotWhitelisted();
     error InputLengthMismatch();
     error NotApproved(address);
     error NotSafeCallback();

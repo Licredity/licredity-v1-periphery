@@ -64,13 +64,13 @@ contract PositionManagerConfigTest is Test {
     function test_updatePoolWhitelist(address pool) public {
         vm.expectEmit(true, false, false, true);
         emit IPositionManagerConfig.UpdatePoolWhitelist(pool, true);
-        config.updatePoolWhitelist(pool, true);
+        config.updateLicredityMarketWhitelist(pool, true);
 
         assertTrue(config.loadPoolWhitelist(ILicredity(pool)));
 
         vm.expectEmit(true, false, false, true);
         emit IPositionManagerConfig.UpdatePoolWhitelist(pool, false);
-        config.updatePoolWhitelist(pool, false);
+        config.updateLicredityMarketWhitelist(pool, false);
 
         assertFalse(config.loadPoolWhitelist(ILicredity(pool)));
     }
