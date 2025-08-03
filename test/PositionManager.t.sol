@@ -327,6 +327,36 @@ contract PositionManagerTest is PeripheryDeployers {
         assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
     }
 
+    function test_exchange() public {
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.EXCHANGE, abi.encode(false, ActionConstants.MSG_SENDER, 1 ether));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        manager.execute{value: 1 ether}(calls, _deadline);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 1 ether);
+    }
+
+    function test_exchange_ERC20() public {
+        IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"02");
+        deployLicredity(address(testToken), address(poolManager), address(this), "Debt TST", "DTST");
+
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.EXCHANGE, abi.encode(true, ActionConstants.MSG_SENDER, 1 ether));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        testToken.mint(address(this), 1 ether);
+        testToken.approve(address(manager), 1 ether);
+
+        manager.execute(calls, _deadline);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 1 ether);
+    }
+
     function test_dynCall_notWhitelisted() public {
         address target = address(new DynTargetMock());
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
