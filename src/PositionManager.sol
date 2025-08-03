@@ -95,12 +95,12 @@ contract PositionManager is
         market.close(info.positionId());
     }
 
-    function depositFungible(uint256 tokenId, address token, uint256 amount) external payable {
+    function depositFungible(uint256 tokenId, address token, uint256 amount) external payable onlyIfApproved(msg.sender, tokenId) {
         PositionInfo info = positionInfo[tokenId];
         _depositFungible(info.market(), info.positionId(), msg.sender, token, amount);
     }
 
-    function depositNonFungible(uint256 tokenId, address token, uint256 depsoitTokenId) external {
+    function depositNonFungible(uint256 tokenId, address token, uint256 depsoitTokenId) external onlyIfApproved(msg.sender, tokenId) {
         PositionInfo info = positionInfo[tokenId];
         _depositNonFungible(info.market(), info.positionId(), msg.sender, token, depsoitTokenId);
     }
