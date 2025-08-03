@@ -118,6 +118,10 @@ abstract contract LicredityRouter {
         }
     }
 
+    function _seize(ILicredity licredity, uint256 positionId) internal {
+        licredity.seize(positionId, address(this));
+    }
+
     /// @notice Abstract function for contracts to implement paying tokens to the poolManager
     /// @param token The token to settle. This is known not to be the native currency
     /// @param payer The address who should pay tokens

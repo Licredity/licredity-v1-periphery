@@ -82,7 +82,7 @@ library CalldataDecoder {
             positionParams.offset := add(_bytes.offset, 0x60)
             positionParams.length := and(calldataload(add(_bytes.offset, 0x40)), OFFSET_OR_LENGTH_MASK)
 
-            if invalidData {
+            if or(invalidData, lt(add(_bytes.length, _bytes.offset), add(positionParams.offset, positionParams.length))) {
                 mstore(0, SLICE_ERROR_SELECTOR)
                 revert(0x1c, 4)
             }
@@ -91,6 +91,10 @@ library CalldataDecoder {
 
     function decodeDeposit(bytes calldata params) internal pure returns (bool boolean, address token, uint256 amount) {
         assembly ("memory-safe") {
+            if lt(params.length, 0x60) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
             boolean := calldataload(params.offset)
             token := calldataload(add(params.offset, 0x20))
             amount := calldataload(add(params.offset, 0x40))
@@ -103,6 +107,10 @@ library CalldataDecoder {
         returns (address recipient, address token, uint256 amount)
     {
         assembly ("memory-safe") {
+            if lt(params.length, 0x60) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
             recipient := calldataload(params.offset)
             token := calldataload(add(params.offset, 0x20))
             amount := calldataload(add(params.offset, 0x40))
@@ -111,6 +119,10 @@ library CalldataDecoder {
 
     function decodeIncreaseDebt(bytes calldata params) internal pure returns (address recipient, uint256 amount) {
         assembly ("memory-safe") {
+            if lt(params.length, 0x40) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
             recipient := calldataload(params.offset)
             amount := calldataload(add(params.offset, 0x20))
         }
@@ -122,14 +134,22 @@ library CalldataDecoder {
         returns (bool boolean, uint256 amount, bool useBalance)
     {
         assembly ("memory-safe") {
+            if lt(params.length, 0x60) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
             boolean := calldataload(params.offset)
             amount := calldataload(add(params.offset, 0x20))
             useBalance := calldataload(add(params.offset, 0x40))
         }
     }
 
-    function decodeSeizeTokenId(bytes calldata params) internal pure returns (uint256 tokenId) {
+    function decodePositionId(bytes calldata params) internal pure returns (uint256 tokenId) {
         assembly ("memory-safe") {
+            if lt(params.length, 0x20) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
             tokenId := calldataload(params.offset)
         }
     }
