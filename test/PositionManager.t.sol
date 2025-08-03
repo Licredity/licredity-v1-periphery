@@ -282,6 +282,21 @@ contract PositionManagerTest is PeripheryDeployers {
         assertEq(IERC20(address(licredity)).balanceOf(address(this)), 5 ether);
     }
 
+    function test_test_decreaseDebtShare_shortcut() public {
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), 100 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(ActionConstants.MSG_SENDER, 5e24));
+
+        ActionsData[] memory calls = planner.finalize();
+        manager.execute{value: 100 ether}(calls, _deadline);
+
+        IERC20(address(licredity)).approve(address(manager), 5e24);
+        manager.decreaseDebtShare(tokenId, 5e24);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+    }
+
     function test_decreaseDebtShare() public {
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
@@ -309,6 +324,24 @@ contract PositionManagerTest is PeripheryDeployers {
         ActionsData[] memory calls = planner.finalize();
 
         manager.execute{value: 1 ether}(calls, _deadline);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+    }
+
+    function test_decreaseDebtAmount_shortcut(uint256 amount) public {
+        amount = bound(amount, 1, 10000 ether - 1);
+
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), amount * 2));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(ActionConstants.MSG_SENDER, amount));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        manager.execute{ value: amount * 2 }(calls, _deadline);
+
+        IERC20(address(licredity)).approve(address(manager), amount);
+        manager.decreaseDebtAmount(tokenId, amount);
         assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
     }
 
