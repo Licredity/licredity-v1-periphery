@@ -95,12 +95,19 @@ contract PositionManager is
         market.close(info.positionId());
     }
 
-    function depositFungible(uint256 tokenId, address token, uint256 amount) external payable onlyIfApproved(msg.sender, tokenId) {
+    function depositFungible(uint256 tokenId, address token, uint256 amount)
+        external
+        payable
+        onlyIfApproved(msg.sender, tokenId)
+    {
         PositionInfo info = positionInfo[tokenId];
         _depositFungible(info.market(), info.positionId(), msg.sender, token, amount);
     }
 
-    function depositNonFungible(uint256 tokenId, address token, uint256 depsoitTokenId) external onlyIfApproved(msg.sender, tokenId) {
+    function depositNonFungible(uint256 tokenId, address token, uint256 depsoitTokenId)
+        external
+        onlyIfApproved(msg.sender, tokenId)
+    {
         PositionInfo info = positionInfo[tokenId];
         _depositNonFungible(info.market(), info.positionId(), msg.sender, token, depsoitTokenId);
     }
@@ -158,12 +165,12 @@ contract PositionManager is
 
     function _handleLicredityAction(uint256 action, bytes calldata params) internal {
         if (action == Actions.DEPOSIT_FUNGIBLE) {
-            (bool payerIsUser, address token, uint256 amount) = params.decodeDeposit();
+            (bool payerIsUser, address token, uint256 amount) = params.decodeBoolAddressAndUint256();
             _depositFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, amount);
 
             return;
         } else if (action == Actions.DEPOSIT_NON_FUNGIBLE) {
-            (bool payerIsUser, address token, uint256 tokenId) = params.decodeDeposit();
+            (bool payerIsUser, address token, uint256 tokenId) = params.decodeBoolAddressAndUint256();
             _depositNonFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, tokenId);
 
             return;
@@ -191,6 +198,10 @@ contract PositionManager is
         } else if (action == Actions.DECREASE_DEBT_SHARE) {
             (bool payerIsUser, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
             _decreaseDebtShare(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), shares, useBalance);
+            return;
+        } else if (action == Actions.EXCHANGE) {
+            (bool payerIsUser, address recipient, uint256 amount) = params.decodeBoolAddressAndUint256();
+            _exchange(usingLicredity, _mapPayer(payerIsUser), _mapRecipient(recipient), amount);
             return;
         } else if (action == Actions.UNISWAP_V4_POSITION_MANAGER_CALL) {
             (uint256 positionValue, bytes calldata positionParams) = params.decodeCallValueAndData();
