@@ -137,12 +137,12 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
             usingLicredityPositionId = positionId;
             return;
         } else if (action == Actions.DEPOSIT_FUNGIBLE) {
-            (bool payerIsUser, address token, uint256 amount) = params.decodeDeposit();
+            (bool payerIsUser, address token, uint256 amount) = params.decodeBoolAddressAndUint256();
             _depositFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, amount);
 
             return;
         } else if (action == Actions.DEPOSIT_NON_FUNGIBLE) {
-            (bool payerIsUser, address token, uint256 tokenId) = params.decodeDeposit();
+            (bool payerIsUser, address token, uint256 tokenId) = params.decodeBoolAddressAndUint256();
             _depositNonFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, tokenId);
 
             return;
@@ -174,6 +174,11 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
         } else if (action == Actions.SEIZE) {
             uint256 positionId = params.decodePositionId();
             _seize(usingLicredity, positionId);
+            return;
+        } else if (action == Actions.EXCHANGE) {
+            (bool payerIsUser, address recipient, uint256 amount) = params.decodeBoolAddressAndUint256();
+            _exchange(usingLicredity, _mapPayer(payerIsUser), _mapRecipient(recipient), amount);
+            return;
         } else if (action == Actions.UNISWAP_V4_POSITION_MANAGER_CALL) {
             (uint256 positionValue, bytes calldata positionParams) = params.decodeCallValueAndData();
             _positionManagerCall(positionValue, positionParams);

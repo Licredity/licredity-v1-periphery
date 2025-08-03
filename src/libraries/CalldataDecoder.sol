@@ -90,7 +90,11 @@ library CalldataDecoder {
         }
     }
 
-    function decodeDeposit(bytes calldata params) internal pure returns (bool boolean, address token, uint256 amount) {
+    function decodeBoolAddressAndUint256(bytes calldata params)
+        internal
+        pure
+        returns (bool boolean, address token, uint256 amount)
+    {
         assembly ("memory-safe") {
             if lt(params.length, 0x60) {
                 mstore(0, SLICE_ERROR_SELECTOR)

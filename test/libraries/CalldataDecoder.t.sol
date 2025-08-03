@@ -85,7 +85,7 @@ contract CalldataDecoderTest is Test {
 
     function test_fuzz_decodeDeposit(bool _boolean, address _token, uint256 _amount) external view {
         bytes memory params = abi.encode(_boolean, _token, _amount);
-        (bool boolean, address token, uint256 amount) = decoder.decodeDeposit(params);
+        (bool boolean, address token, uint256 amount) = decoder.decodeBoolAddressAndUint256(params);
 
         assertEq(boolean, _boolean);
         assertEq(token, _token);
@@ -102,7 +102,7 @@ contract CalldataDecoderTest is Test {
 
         assertEq(invalidParams.length, params.length - 1);
         vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
-        decoder.decodeDeposit(invalidParams);
+        decoder.decodeBoolAddressAndUint256(invalidParams);
     }
 
     function test_fuzz_decodeWithdraw(address _recipient, address _token, uint256 _amount) external view {
