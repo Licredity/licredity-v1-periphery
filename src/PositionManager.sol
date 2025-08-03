@@ -105,6 +105,16 @@ contract PositionManager is
         _depositNonFungible(info.market(), info.positionId(), msg.sender, token, depsoitTokenId);
     }
 
+    function decreaseDebtAmount(uint256 tokenId, uint256 amount) external {
+        PositionInfo info = positionInfo[tokenId];
+        _decreaseDebtAmount(info.market(), info.positionId(), msg.sender, amount, false);    
+    }
+
+    function decreaseDebtShare(uint256 tokenId, uint256 shares) external {
+        PositionInfo info = positionInfo[tokenId];
+        _decreaseDebtShare(info.market(), info.positionId(), msg.sender, shares, false);
+    }
+
     function execute(ActionsData[] calldata inputs, uint256 deadline)
         external
         payable
