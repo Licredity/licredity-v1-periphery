@@ -38,5 +38,5 @@ interface ILicredityAccount is IPositionManagerConfig {
     /// @param licredity Licredity pool address
     /// @param inputs Actions data
     /// @param deadline Deadline
-    function execute(ILicredity licredity, ActionsData[] calldata inputs, uint256 deadline) external payable;
+    function execute(ILicredity licredity, bytes calldata inputs, uint256 deadline) external payable;
 }
