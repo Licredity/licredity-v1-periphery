@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {LicredityAccount} from "src/LicredityAccount.sol";
 import {Actions} from "src/types/Actions.sol";
+import {ActionConstants} from "src/libraries/ActionConstants.sol";
 import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {AccountPlan, AccountPlanner} from "./shared/AccountPlanner.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
@@ -61,5 +62,50 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.DEPOSIT_NON_FUNGIBLE, abi.encode(true, address(nonFungibleMock), 1));
 
         account.execute(licredity, planner.encode(), _deadline);
+    }
+
+    function test_licredityAccount_withdrawFungible(uint256 amount) public {
+        amount = bound(amount, 1, 10000 ether - 1);
+        deal(address(this), amount);
+
+        uint256 positionId = account.open(licredity);
+        AccountPlan memory planner = AccountPlanner.init();
+
+        planner.add(Actions.SWITCH, abi.encode(positionId));
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), amount));
+        planner.add(Actions.WITHDRAW_FUNGIBLE, abi.encode(address(0xb0b), address(0), amount));
+
+        account.execute{value: amount}(licredity, planner.encode(), _deadline);
+
+        assertEq(address(0xb0b).balance, amount);
+    }
+
+    function test_licredityAccount_withdrawNonFungible() public {
+        nonFungibleMock.mint(address(this), 1);
+        nonFungibleMock.approve(address(account), 1);
+
+        uint256 positionId = account.open(licredity);
+        AccountPlan memory planner = AccountPlanner.init();
+
+        planner.add(Actions.SWITCH, abi.encode(positionId));
+        planner.add(Actions.DEPOSIT_NON_FUNGIBLE, abi.encode(true, address(nonFungibleMock), 1));
+        planner.add(Actions.WITHDRAW_NON_FUNGIBLE, abi.encode(address(0xb0b), address(nonFungibleMock), 1));
+
+        account.execute(licredity, planner.encode(), _deadline);
+
+        assertEq(nonFungibleMock.ownerOf(1), address(0xb0b));
+    }
+
+    function test_licredityAccount_debtAmount(uint256 amount) public {
+        amount = bound(amount, 1, 10000 ether - 1);
+
+        uint256 positionId = account.open(licredity);
+        AccountPlan memory planner = AccountPlanner.init();
+
+        planner.add(Actions.SWITCH, abi.encode(positionId));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(ActionConstants.ADDRESS_THIS, amount));
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, amount, false));  
+
+        account.execute(licredity, planner.encode(), _deadline);  
     }
 }
