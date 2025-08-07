@@ -18,6 +18,10 @@ abstract contract LicredityRouter {
     function _depositFungible(ILicredity licredity, uint256 positionId, address payer, address token, uint256 amount)
         internal
     {
+        if (amount == ActionConstants.OPEN_DELTA) {
+            amount = Fungible.wrap(token).balanceOf(address(this));
+        }
+
         if (Fungible.wrap(token).isNative()) {
             licredity.depositFungible{value: amount}(positionId);
         } else {

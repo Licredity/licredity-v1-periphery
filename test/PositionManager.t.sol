@@ -161,6 +161,33 @@ contract PositionManagerTest is PeripheryDeployers {
         manager.execute(calls, _deadline);
     }
 
+    function test_depositFungible_erc20_all() public {
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+        testToken.mint(address(manager), 10 ether);
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(false, address(testToken), 0));
+        ActionsData[] memory calls = planner.finalize();
+
+        vm.expectEmit(true, true, false, true);
+        emit ILicredity.DepositFungible(1, Fungible.wrap(address(testToken)), 10 ether);
+        manager.execute(calls, _deadline);
+    }
+
+    function test_depositFungible_native_all() public {
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        deal(address(manager), 10 ether);
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(false, address(0), 0));
+        ActionsData[] memory calls = planner.finalize();
+
+        vm.expectEmit(true, true, false, true);
+        emit ILicredity.DepositFungible(1, Fungible.wrap(address(0)), 10 ether);
+        manager.execute(calls, _deadline);
+    }
+
     function test_depositNonFungible_payIsUser() public {
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
         nonFungibleMock.mint(address(this), 1);
