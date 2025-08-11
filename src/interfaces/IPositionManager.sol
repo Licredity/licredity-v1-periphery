@@ -35,6 +35,16 @@ interface IPositionManager is IPositionManagerConfig {
     /// @param tokenId Deposit NFT tokenId
     function depositNonFungible(uint256 tokenId, address token, uint256 depsoitTokenId) external;
 
+    /// @notice Repay the debt
+    /// @param tokenId The position tokenId
+    /// @param amount The amount debt to repay
+    function decreaseDebtAmount(uint256 tokenId, uint256 amount) external;
+
+    /// @notice Repay the debt share
+    /// @param tokenId The position tokenId
+    /// @param shares The amount debt share to repay
+    function decreaseDebtShare(uint256 tokenId, uint256 shares) external;
+
     /// @notice Executes encoded commands along with provided inputs. Reverts if deadline has expired.
     /// @param inputs The encoded commands
     /// @param deadline The deadline by which the transaction must be executed

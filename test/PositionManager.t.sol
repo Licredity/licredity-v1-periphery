@@ -161,6 +161,33 @@ contract PositionManagerTest is PeripheryDeployers {
         manager.execute(calls, _deadline);
     }
 
+    function test_depositFungible_erc20_all() public {
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+        testToken.mint(address(manager), 10 ether);
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(false, address(testToken), 0));
+        ActionsData[] memory calls = planner.finalize();
+
+        vm.expectEmit(true, true, false, true);
+        emit ILicredity.DepositFungible(1, Fungible.wrap(address(testToken)), 10 ether);
+        manager.execute(calls, _deadline);
+    }
+
+    function test_depositFungible_native_all() public {
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        deal(address(manager), 10 ether);
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(false, address(0), 0));
+        ActionsData[] memory calls = planner.finalize();
+
+        vm.expectEmit(true, true, false, true);
+        emit ILicredity.DepositFungible(1, Fungible.wrap(address(0)), 10 ether);
+        manager.execute(calls, _deadline);
+    }
+
     function test_depositNonFungible_payIsUser() public {
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
         nonFungibleMock.mint(address(this), 1);
@@ -282,6 +309,21 @@ contract PositionManagerTest is PeripheryDeployers {
         assertEq(IERC20(address(licredity)).balanceOf(address(this)), 5 ether);
     }
 
+    function test_test_decreaseDebtShare_shortcut() public {
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), 100 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(ActionConstants.MSG_SENDER, 5e24));
+
+        ActionsData[] memory calls = planner.finalize();
+        manager.execute{value: 100 ether}(calls, _deadline);
+
+        IERC20(address(licredity)).approve(address(manager), 5e24);
+        manager.decreaseDebtShare(tokenId, 5e24);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+    }
+
     function test_decreaseDebtShare() public {
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
@@ -289,6 +331,21 @@ contract PositionManagerTest is PeripheryDeployers {
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), 100 ether));
         planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(ActionConstants.ADDRESS_THIS, 5e24));
         planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(false, 5e24, false));
+        planner.add(Actions.WITHDRAW_FUNGIBLE, abi.encode(ActionConstants.MSG_SENDER, address(0), 100 ether));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        manager.execute{value: 100 ether}(calls, _deadline);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+    }
+
+    function test_decreaseDebtShare_all() public {
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), 100 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(ActionConstants.ADDRESS_THIS, 5e24));
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(false, 0, false));
         planner.add(Actions.WITHDRAW_FUNGIBLE, abi.encode(ActionConstants.MSG_SENDER, address(0), 100 ether));
 
         ActionsData[] memory calls = planner.finalize();
@@ -309,6 +366,24 @@ contract PositionManagerTest is PeripheryDeployers {
         ActionsData[] memory calls = planner.finalize();
 
         manager.execute{value: 1 ether}(calls, _deadline);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
+    }
+
+    function test_decreaseDebtAmount_shortcut(uint256 amount) public {
+        amount = bound(amount, 1, 10000 ether - 1);
+
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), amount * 2));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(ActionConstants.MSG_SENDER, amount));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        manager.execute{value: amount * 2}(calls, _deadline);
+
+        IERC20(address(licredity)).approve(address(manager), amount);
+        manager.decreaseDebtAmount(tokenId, amount);
         assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
     }
 
@@ -355,6 +430,30 @@ contract PositionManagerTest is PeripheryDeployers {
 
         manager.execute(calls, _deadline);
         assertEq(IERC20(address(licredity)).balanceOf(address(this)), 1 ether);
+    }
+    
+    function test_decreaseDebtAmount_all(uint256 amount) public {
+        amount = bound(amount, 1, 10000 ether - 1);
+
+        uint256 tokenId = manager.mint(ILicredity(address(licredity)));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.EXCHANGE, abi.encode(true, ActionConstants.MSG_SENDER, 1 ether));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        testToken.mint(address(this), 1 ether);
+        testToken.approve(address(manager), 1 ether);
+
+        manager.execute(calls, _deadline);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 1 ether);
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(licredity), amount));
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, 0, true));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        manager.execute(calls, _deadline);
+        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 0);
     }
 
     function test_dynCall_notWhitelisted() public {

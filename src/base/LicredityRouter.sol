@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {LicredityStateView} from "../libraries/LicredityStateView.sol";
+import {ActionConstants} from "../libraries/ActionConstants.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
@@ -17,6 +18,10 @@ abstract contract LicredityRouter {
     function _depositFungible(ILicredity licredity, uint256 positionId, address payer, address token, uint256 amount)
         internal
     {
+        if (amount == ActionConstants.OPEN_DELTA) {
+            amount = Fungible.wrap(token).balanceOf(address(this));
+        }
+
         if (Fungible.wrap(token).isNative()) {
             licredity.depositFungible{value: amount}(positionId);
         } else {
@@ -87,7 +92,13 @@ abstract contract LicredityRouter {
         bool useBalance
     ) internal {
         (uint256 totalShares, uint256 totalAssets) = licredity.getTotalDebt();
-        uint256 shareDelta = amount.fullMulDiv(totalShares, totalAssets);
+        uint256 shareDelta;
+
+        if (amount == ActionConstants.OPEN_DELTA) {
+            shareDelta = licredity.getPositionDebtShare(positionId);
+        } else {
+            shareDelta = amount.fullMulDiv(totalShares, totalAssets);
+        }
 
         if (useBalance) {
             licredity.decreaseDebtShare(positionId, shareDelta, true);
@@ -104,6 +115,10 @@ abstract contract LicredityRouter {
         internal
     {
         (uint256 totalShares, uint256 totalAssets) = licredity.getTotalDebt();
+
+        if (delta == ActionConstants.OPEN_DELTA) {
+            delta = licredity.getPositionDebtShare(positionId);
+        }
 
         if (useBalance) {
             licredity.decreaseDebtShare(positionId, delta, true);
