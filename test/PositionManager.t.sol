@@ -431,22 +431,14 @@ contract PositionManagerTest is PeripheryDeployers {
         manager.execute(calls, _deadline);
         assertEq(IERC20(address(licredity)).balanceOf(address(this)), 1 ether);
     }
-    
+
     function test_decreaseDebtAmount_all(uint256 amount) public {
         amount = bound(amount, 1, 10000 ether - 1);
 
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 
         Plan memory planner = Planner.init(tokenId);
-        planner.add(Actions.EXCHANGE, abi.encode(true, ActionConstants.MSG_SENDER, 1 ether));
 
-        ActionsData[] memory calls = planner.finalize();
-
-        testToken.mint(address(this), 1 ether);
-        testToken.approve(address(manager), 1 ether);
-
-        manager.execute(calls, _deadline);
-        assertEq(IERC20(address(licredity)).balanceOf(address(this)), 1 ether);
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(address(licredity), amount));
         planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, 0, true));
 
