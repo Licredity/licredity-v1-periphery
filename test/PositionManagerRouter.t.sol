@@ -2,8 +2,10 @@
 pragma solidity ^0.8.20;
 
 import {PositionManager} from "src/PositionManager.sol";
+import {LicredityAccount} from "src/LicredityAccount.sol";
 import {Actions, ActionsData} from "src/types/Actions.sol";
 import {Planner, Plan} from "./shared/Planner.sol";
+import {AccountPlan, AccountPlanner} from "./shared/AccountPlanner.sol";
 import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
@@ -15,6 +17,8 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
 
     IPoolManager uniswapV4poolManager;
     PositionManager licredityManager;
+    LicredityAccount account;
+
     uint256 _deadline;
 
     address constant USDC = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -34,6 +38,8 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         licredityManager =
             new PositionManager(address(this), uniswapV4poolManager, address(0), IAllowanceTransfer(PERMIT2_ADDRESS));
         licredityManager.updateLicredityMarketWhitelist(address(licredity), true);
+        account =
+            new LicredityAccount(address(this), uniswapV4poolManager, address(0), IAllowanceTransfer(PERMIT2_ADDRESS));
 
         _deadline = block.timestamp + 1;
     }
@@ -65,7 +71,7 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         assertGe(IERC20(address(USDC)).balanceOf(address(this)), 0);
     }
 
-    function test_paraswap_token() public {
+    function test_PoolManager_paraswap_token() public {
         licredityManager.updateRouterWhitelist(PARASWAP, true);
         licredityManager.updateTokenApporve(USDC, PARASWAP, type(uint256).max);
         _getUSDC(address(licredityManager), 1000e6);
@@ -81,5 +87,20 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         licredityManager.execute(calls, _deadline);
 
         assertGe(address(licredityManager).balance, 0);
+    }
+
+    function test_Account_paraswap_token() public {
+        account.updateRouterWhitelist(PARASWAP, true);
+        account.updateTokenApporve(USDC, PARASWAP, type(uint256).max);
+        _getUSDC(address(account), 1000e6);
+
+        bytes memory swapCalldata = _getParaSwapCalldata("token");
+
+        AccountPlan memory planner = AccountPlanner.init();
+        planner.add(Actions.DYN_CALL, abi.encodePacked(abi.encode(PARASWAP, 0), swapCalldata));
+
+        account.execute(licredity, planner.encode(), _deadline);
+
+        assertGe(address(account).balance, 0);
     }
 }
