@@ -137,6 +137,8 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         ActionsData[] memory calls = planner.finalize();
 
         licredityManager.execute{value: 0.5 ether}(calls, _deadline);
+
+        licredityManager.burn(tokenId);
     }
 
     receive() external payable {}

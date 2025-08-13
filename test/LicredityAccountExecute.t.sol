@@ -211,5 +211,32 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         account.execute{value: 0.5 ether}(licredity, planner.encode(), _deadline);
     }
 
+    function test_licredityAccount_closePosition() public {
+        test_licredityAccount_initializeLiquidity();
+
+        uint256 positionId = account.open(licredity);
+        SwapPlan memory swapPlan = SwapPlanner.init();
+
+        IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: int256(-0.02 ether),
+            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-3)
+        });
+
+        swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));
+        // Use licredity position manager to pay for swap and receive debt token
+        swapPlan.addSwap(poolKey.currency0, poolKey.currency1, ActionConstants.ADDRESS_THIS, false);
+        swapPlan.add(Actions.UNISWAP_V4_SWEEP, abi.encode(address(0), ActionConstants.MSG_SENDER));
+
+        AccountPlan memory planner = AccountPlanner.init();
+        planner.add(Actions.SWITCH, abi.encode(positionId));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(ActionConstants.ADDRESS_THIS, 0.02 ether));
+        planner.add(Actions.UNISWAP_V4_POOL_MANAGER_CALL, swapPlan.encode());
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(false, 0.02 ether, false));
+        account.execute{value: 0.5 ether}(licredity, planner.encode(), _deadline);
+
+        account.close(licredity, positionId);
+    }
+
     receive() external payable {}
 }
