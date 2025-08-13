@@ -65,23 +65,18 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
         nonFungible.transfer(recipient);
     }
 
-    function execute(ILicredity licredity, ActionsData[] calldata inputs, uint256 deadline)
+    function execute(ILicredity licredity, bytes calldata inputs, uint256 deadline)
         external
         payable
         isNotLocked
         checkDeadline(deadline)
     {
-        for (uint256 i = 0; i < inputs.length; i++) {
-            ActionsData calldata input = inputs[i];
-            if (input.tokenId != 0) {
-                usingLicredity = licredity;
+        usingLicredity = licredity;
 
-                usingLicredity = ILicredity(address(0));
-                usingLicredityPositionId = 0;
-            } else {
-                poolManager.unlock(input.unlockData);
-            }
-        }
+        usingLicredity.unlock(inputs);
+
+        usingLicredity = ILicredity(address(0));
+        usingLicredityPositionId = 0;
     }
 
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
