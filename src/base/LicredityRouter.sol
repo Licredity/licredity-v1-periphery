@@ -137,10 +137,23 @@ abstract contract LicredityRouter {
         licredity.seize(positionId, address(this));
     }
 
+    function _exchange(ILicredity licredity, address payer, address recipient, uint256 amount) internal {
+        Fungible baseFungible = LicredityStateView.getBaseFungible(licredity);
+
+        if (baseFungible.isNative()) {
+            licredity.exchangeFungible{value: amount}(recipient, true);
+        } else {
+            licredity.stageFungible(baseFungible);
+            _pay(Currency.wrap(Fungible.unwrap(baseFungible)), payer, address(licredity), amount);
+            licredity.exchangeFungible(recipient, true);
+        }
+    }
+
     /// @notice Abstract function for contracts to implement paying tokens to the poolManager
     /// @param token The token to settle. This is known not to be the native currency
     /// @param payer The address who should pay tokens
     /// @param recipient The address who should receive tokens
     /// @param amount The number of tokens to send
+
     function _pay(Currency token, address payer, address recipient, uint256 amount) internal virtual;
 }
