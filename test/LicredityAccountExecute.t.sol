@@ -36,7 +36,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
 
     function setUp() public {
         IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"01");
-        deployLicredity(address(0), address(poolManager), address(this), "Debt ETH", "DETH");
+        deployLicredity(address(0), uint256(365), address(poolManager), address(this), "Debt ETH", "DETH");
         licredity.setDebtLimit(10000 ether);
 
         deployAndSetOracleMock();
@@ -211,8 +211,37 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         account.execute{value: 0.5 ether}(licredity, planner.encode(), _deadline);
     }
 
+    function swapDebtTokenToBase() internal {
+        uint256 positionId = account.open(licredity);
+        SwapPlan memory swapPlan = SwapPlanner.init();
+
+        IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
+            zeroForOne: false,
+            amountSpecified: int256(0.02 ether),
+            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
+        });
+
+        swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));
+        swapPlan.addSwap(poolKey.currency1, poolKey.currency0, ActionConstants.ADDRESS_THIS, false);
+        swapPlan.add(Actions.UNISWAP_V4_SWEEP, abi.encode(address(0), ActionConstants.ADDRESS_THIS)); 
+
+        AccountPlan memory planner = AccountPlanner.init();
+        planner.add(Actions.SWITCH, abi.encode(positionId));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(ActionConstants.ADDRESS_THIS, 0.03 ether));
+        planner.add(Actions.UNISWAP_V4_POOL_MANAGER_CALL, swapPlan.encode());
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(false, address(0), ActionConstants.OPEN_DELTA));
+
+        account.execute{value: 0.5 ether}(licredity, planner.encode(), _deadline);
+    }
+
+    function test_licredityAccount_swapDebtTokenToBase() public {
+        test_licredityAccount_initializeLiquidity();
+        swapDebtTokenToBase();
+    }
+
     function test_licredityAccount_closePosition() public {
         test_licredityAccount_initializeLiquidity();
+        swapDebtTokenToBase();
 
         uint256 positionId = account.open(licredity);
         SwapPlan memory swapPlan = SwapPlanner.init();
