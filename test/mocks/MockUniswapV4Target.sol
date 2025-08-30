@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {PoolKey} from "@uniswap-v4-core/types/PoolKey.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
-import {console} from "@forge-std/console.sol";
 
 contract MockUniswapV4Target {
     event UnlockData(bytes unlockData);

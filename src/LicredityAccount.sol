@@ -4,7 +4,7 @@ pragma solidity =0.8.30;
 import {UniswapV4Router} from "./base/UniswapV4Router.sol";
 import {LicredityRouter} from "./base/LicredityRouter.sol";
 import {PositionManagerConfig} from "./PositionManagerConfig.sol";
-import {ActionsData, Actions} from "./types/Actions.sol";
+import {Actions} from "./types/Actions.sol";
 import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
 import {ActionConstants} from "./libraries/ActionConstants.sol";
 import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";

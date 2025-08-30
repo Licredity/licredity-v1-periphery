@@ -30,7 +30,7 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         vm.createSelectFork("ETH", 22990827);
         uniswapV4poolManager = deployUniswapV4Core(address(0xabcd), hex"01");
 
-        deployLicredity(address(0), address(uniswapV4poolManager), address(this), "Debt ETH", "DETH");
+        deployLicredity(address(0), uint256(365), address(uniswapV4poolManager), address(this), "Debt ETH", "DETH");
         licredity.setDebtLimit(10000 ether);
         deployAndSetOracleMock();
         deployNonFungibleMock();

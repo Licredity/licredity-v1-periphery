@@ -19,7 +19,7 @@ contract LicredityAccountTest is PeripheryDeployers {
 
     function setUp() public {
         IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"01");
-        deployLicredity(address(0), address(poolManager), address(this), "Debt ETH", "DETH");
+        deployLicredity(address(0), uint256(365), address(poolManager), address(this), "Debt ETH", "DETH");
         licredity.setDebtLimit(10000 ether);
 
         deployAndSetOracleMock();

@@ -5,7 +5,6 @@ import {ActionConstants} from "../libraries/ActionConstants.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {TransientStateLibrary} from "@uniswap-v4-core/libraries/TransientStateLibrary.sol";
-import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
 abstract contract UniswapV4Router {
     using TransientStateLibrary for IPoolManager;

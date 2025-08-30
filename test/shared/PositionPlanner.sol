@@ -2,8 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {PoolKey} from "@uniswap-v4-core/types/PoolKey.sol";
-import {Actions} from "src/types/Actions.sol";
-import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {UniswapV4Actions} from "./UniswapV4Actions.sol";
 import {ActionConstants} from "src/libraries/ActionConstants.sol";
 

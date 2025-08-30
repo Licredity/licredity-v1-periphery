@@ -27,7 +27,7 @@ contract PositionManagerTest is PeripheryDeployers {
 
     function setUp() public {
         IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"01");
-        deployLicredity(address(0), address(poolManager), address(this), "Debt ETH", "DETH");
+        deployLicredity(address(0), uint256(365), address(poolManager), address(this), "Debt ETH", "DETH");
         licredity.setDebtLimit(10000 ether);
 
         deployAndSetOracleMock();
@@ -416,7 +416,7 @@ contract PositionManagerTest is PeripheryDeployers {
 
     function test_exchange_ERC20() public {
         IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"02");
-        deployLicredity(address(testToken), address(poolManager), address(this), "Debt TST", "DTST");
+        deployLicredity(address(testToken), uint256(365), address(poolManager), address(this), "Debt TST", "DTST");
 
         uint256 tokenId = manager.mint(ILicredity(address(licredity)));
 

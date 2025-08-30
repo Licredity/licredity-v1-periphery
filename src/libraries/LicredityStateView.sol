@@ -8,7 +8,7 @@ library LicredityStateView {
     uint256 internal constant BASE_FUNGIBLE_OFFSET = 13;
     uint256 public constant TOTAL_DEBT_SHARE_OFFSET = 16;
     uint256 public constant TOTAL_DEBT_BALANCE_OFFSET = 17;
-    uint256 public constant POSITIONS_OFFSET = 25;
+    uint256 public constant POSITIONS_OFFSET = 24;
 
     function getTotalDebt(ILicredity manager) internal view returns (uint256 totalShares, uint256 totalAssets) {
         totalShares = uint256(manager.extsload(bytes32(TOTAL_DEBT_SHARE_OFFSET)));
