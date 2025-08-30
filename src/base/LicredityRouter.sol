@@ -8,7 +8,6 @@ import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
 import {FullMath} from "@licredity-v1-core/libraries/FullMath.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
-import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 import {IERC721} from "@forge-std/interfaces/IERC721.sol";
 
 abstract contract LicredityRouter {
@@ -141,11 +140,11 @@ abstract contract LicredityRouter {
         Fungible baseFungible = LicredityStateView.getBaseFungible(licredity);
 
         if (baseFungible.isNative()) {
-            licredity.exchangeFungible{value: amount}(recipient, true);
+            licredity.exchange{value: amount}(recipient, true);
         } else {
             licredity.stageFungible(baseFungible);
             _pay(Currency.wrap(Fungible.unwrap(baseFungible)), payer, address(licredity), amount);
-            licredity.exchangeFungible(recipient, true);
+            licredity.exchange(recipient, true);
         }
     }
 
