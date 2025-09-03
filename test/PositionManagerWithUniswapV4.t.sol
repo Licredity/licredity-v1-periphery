@@ -7,7 +7,6 @@ import {ActionConstants} from "src/libraries/ActionConstants.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {PoolKey} from "@uniswap-v4-core/types/PoolKey.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
-import {IUniswapV4PositionManager} from "src/interfaces/external/IUniswapV4PositionManager.sol";
 import {IHooks} from "@uniswap-v4-core/interfaces/IHooks.sol";
 import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
 import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
@@ -16,8 +15,9 @@ import {PositionPlanner, PositionPlan} from "./shared/PositionPlanner.sol";
 import {SwapPlanner, SwapPlan} from "./shared/SwapPlanner.sol";
 import {UniswapV4Actions} from "./shared/UniswapV4Actions.sol";
 import {IERC721} from "@forge-std/interfaces/IERC721.sol";
-import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 import {TickMath} from "@uniswap-v4-core/libraries/TickMath.sol";
+
+import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
 contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
     IPoolManager uniswapV4poolManager;
@@ -33,7 +33,7 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
 
     function setUp() public {
         uniswapV4poolManager = deployUniswapV4Core(address(0xabcd), hex"01");
-        deployLicredity(address(0), address(uniswapV4poolManager), address(this), "Debt ETH", "DETH");
+        deployLicredity(address(0), uint256(365), address(uniswapV4poolManager), address(this), "Debt ETH", "DETH");
         licredity.setDebtLimit(10000 ether);
 
         deployAndSetOracleMock();
@@ -112,8 +112,38 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         licredityManager.execute{value: 0.5 ether}(calls, _deadline);
     }
 
+    function swapDebtTokenToBase() internal {
+        uint256 tokenId = licredityManager.mint(licredity);
+
+        SwapPlan memory swapPlan = SwapPlanner.init();
+
+        IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
+            zeroForOne: false,
+            amountSpecified: int256(0.02 ether),
+            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
+        });
+
+        swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));
+        swapPlan.addSwap(poolKey.currency1, poolKey.currency0, ActionConstants.ADDRESS_THIS, false);
+        swapPlan.add(Actions.UNISWAP_V4_SWEEP, abi.encode(address(0), ActionConstants.ADDRESS_THIS));
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(ActionConstants.ADDRESS_THIS, 0.03 ether));
+        planner.add(Actions.UNISWAP_V4_POOL_MANAGER_CALL, swapPlan.encode());
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(false, address(0), ActionConstants.OPEN_DELTA));
+        ActionsData[] memory calls = planner.finalize();
+
+        licredityManager.execute{value: 0.5 ether}(calls, _deadline);
+    }
+
+    function test_swapDebtTokenToBase() public {
+        test_initializeLiquidity();
+        swapDebtTokenToBase();
+    }
+
     function test_swap_closePosition() public {
         test_initializeLiquidity();
+        swapDebtTokenToBase();
 
         uint256 tokenId = licredityManager.mint(licredity);
 

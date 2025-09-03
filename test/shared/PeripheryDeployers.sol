@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import {Test} from "@forge-std/Test.sol";
 import {Licredity} from "@licredity-v1-core/Licredity.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
-import {IUniswapV4PositionManager} from "src/interfaces/external/IUniswapV4PositionManager.sol";
 import {OracleMock, Fungible, BaseERC20Mock, NonFungibleMock} from "@licredity-v1-test/utils/Deployer.sol";
 
 contract PeripheryDeployers is Test {
@@ -61,6 +60,7 @@ contract PeripheryDeployers is Test {
 
     function deployLicredity(
         address baseToken,
+        uint256 interestSensitivity,
         address poolManager,
         address governor,
         string memory name,
@@ -69,7 +69,7 @@ contract PeripheryDeployers is Test {
         address payable mockLicredity = payable(address(0xFb46d30c9B3ACc61d714D167179748FD01E09aC0));
         vm.label(mockLicredity, "Licredity");
 
-        bytes memory args = abi.encode(baseToken, poolManager, governor, name, symbol);
+        bytes memory args = abi.encode(baseToken, interestSensitivity, poolManager, governor, name, symbol);
         deployCodeTo("Licredity.sol", args, mockLicredity);
 
         licredity = Licredity(mockLicredity);
