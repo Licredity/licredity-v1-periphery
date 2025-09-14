@@ -136,7 +136,7 @@ abstract contract LicredityRouter {
         licredity.seizePosition(positionId, address(this));
     }
 
-    function _exchange(ILicredity licredity, address payer, address recipient, uint256 amount) internal {
+    function _exchangeFungible(ILicredity licredity, address payer, address recipient, uint256 amount) internal {
         Fungible baseFungible = LicredityStateView.getBaseFungible(licredity);
 
         if (baseFungible.isNative()) {

@@ -211,7 +211,7 @@ contract PositionManager is
             return;
         } else if (action == Actions.EXCHANGE) {
             (bool payerIsUser, address recipient, uint256 amount) = params.decodeBoolAddressAndUint256();
-            _exchange(usingLicredity, _mapPayer(payerIsUser), _mapRecipient(recipient), amount);
+            _exchangeFungible(usingLicredity, _mapPayer(payerIsUser), _mapRecipient(recipient), amount);
             return;
         } else if (action == Actions.UNISWAP_V4_POSITION_MANAGER_CALL) {
             (uint256 positionValue, bytes calldata positionParams) = params.decodeCallValueAndData();
