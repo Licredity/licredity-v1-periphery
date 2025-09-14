@@ -133,18 +133,18 @@ abstract contract LicredityRouter {
     }
 
     function _seize(ILicredity licredity, uint256 positionId) internal {
-        licredity.seize(positionId, address(this));
+        licredity.seizePosition(positionId, address(this));
     }
 
     function _exchange(ILicredity licredity, address payer, address recipient, uint256 amount) internal {
         Fungible baseFungible = LicredityStateView.getBaseFungible(licredity);
 
         if (baseFungible.isNative()) {
-            licredity.exchange{value: amount}(recipient, true);
+            licredity.exchangeFungible{value: amount}(recipient, true);
         } else {
             licredity.stageFungible(baseFungible);
             _pay(Currency.wrap(Fungible.unwrap(baseFungible)), payer, address(licredity), amount);
-            licredity.exchange(recipient, true);
+            licredity.exchangeFungible(recipient, true);
         }
     }
 

@@ -39,11 +39,11 @@ contract LicredityAccountTest is PeripheryDeployers {
     function test_openWithClose() public {
         vm.expectEmit(true, true, false, false);
         emit ILicredity.OpenPosition(1, address(account));
-        uint256 positionId = account.open(licredity);
+        uint256 positionId = account.openPosition(licredity);
 
         vm.expectEmit(true, false, false, false);
         emit ILicredity.ClosePosition(1);
-        account.close(licredity, positionId);
+        account.closePosition(licredity, positionId);
     }
 
     function test_whithdraw_native() public {

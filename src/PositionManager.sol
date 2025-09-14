@@ -83,7 +83,7 @@ contract PositionManager is
         }
         _mint(msg.sender, tokenId);
 
-        uint256 positionId = market.open();
+        uint256 positionId = market.openPosition();
         positionInfo[tokenId] = PositionInfoLibrary.from(address(market), positionId);
     }
 
@@ -92,7 +92,7 @@ contract PositionManager is
         ILicredity market = ILicredity(info.market());
 
         _burn(tokenId);
-        market.close(info.positionId());
+        market.closePosition(info.positionId());
     }
 
     function depositFungible(uint256 tokenId, address token, uint256 amount)

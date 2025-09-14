@@ -49,12 +49,12 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
         return lockedBy;
     }
 
-    function open(ILicredity market) external onlyGovernor returns (uint256 positionId) {
-        return market.open();
+    function openPosition(ILicredity market) external onlyGovernor returns (uint256 positionId) {
+        return market.openPosition();
     }
 
-    function close(ILicredity market, uint256 positionId) external onlyGovernor {
-        return market.close(positionId);
+    function closePosition(ILicredity market, uint256 positionId) external onlyGovernor {
+        return market.closePosition(positionId);
     }
 
     function sweepFungible(Currency currency, address recipient, uint256 amount) external onlyGovernor {

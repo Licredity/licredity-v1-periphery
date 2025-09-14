@@ -5,14 +5,11 @@ import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 
 library LicredityStateView {
-    uint256 internal constant BASE_FUNGIBLE_OFFSET = 13;
-    uint256 public constant TOTAL_DEBT_SHARE_OFFSET = 16;
-    uint256 public constant TOTAL_DEBT_BALANCE_OFFSET = 17;
-    uint256 public constant POSITIONS_OFFSET = 24;
+    uint256 public constant POSITIONS_OFFSET = 22;
 
     function getTotalDebt(ILicredity manager) internal view returns (uint256 totalShares, uint256 totalAssets) {
-        totalShares = uint256(manager.extsload(bytes32(TOTAL_DEBT_SHARE_OFFSET)));
-        totalAssets = uint256(manager.extsload(bytes32(TOTAL_DEBT_BALANCE_OFFSET)));
+        totalShares = manager.totalDebtShare();
+        totalAssets = manager.totalDebtBalance();
     }
 
     function _getPositionSlot(uint256 positionId) internal pure returns (bytes32 slot) {
@@ -31,6 +28,6 @@ library LicredityStateView {
     }
 
     function getBaseFungible(ILicredity manager) internal view returns (Fungible baseFungible) {
-        baseFungible = Fungible.wrap(address(uint160(uint256(manager.extsload(bytes32(BASE_FUNGIBLE_OFFSET))))));
+        baseFungible = manager.baseFungible();
     }
 }
