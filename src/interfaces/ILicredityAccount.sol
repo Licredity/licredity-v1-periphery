@@ -16,12 +16,12 @@ interface ILicredityAccount is IPositionManagerConfig {
     /// @notice Creates a new position in pool and returns its positionId
     /// @param pool Licredity pool address
     /// @return positionId of the new position in licredity pool
-    function open(ILicredity pool) external returns (uint256 positionId);
+    function openPosition(ILicredity pool) external returns (uint256 positionId);
 
     /// @notice Closes a position in pool
     /// @param pool Licredity pool address
     /// @param positionId positionId of the position in licredity pool
-    function close(ILicredity pool, uint256 positionId) external;
+    function closePosition(ILicredity pool, uint256 positionId) external;
 
     /// @notice Withdraw fungible token from licredity account
     /// @param currency Fungible token
