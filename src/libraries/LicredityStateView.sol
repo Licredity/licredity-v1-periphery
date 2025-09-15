@@ -5,7 +5,7 @@ import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 
 library LicredityStateView {
-    uint256 public constant POSITIONS_OFFSET = 22;
+    uint256 public constant POSITIONS_OFFSET = 17;
 
     function getTotalDebt(ILicredity manager) internal view returns (uint256 totalShares, uint256 totalAssets) {
         totalShares = manager.totalDebtShare();
