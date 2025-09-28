@@ -16,9 +16,8 @@ import {PoolKey} from "@uniswap-v4-core/types/PoolKey.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {TickMath} from "@uniswap-v4-core/libraries/TickMath.sol";
 import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
-import {BaseERC20Mock} from "@licredity-v1-test/utils/Deployer.sol";
+import {BaseERC20Mock} from "@licredity-v1-core/test/BaseERC20Mock.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
-import {Fungible as FungibleMock} from "@licredity-v1-test/utils/Deployer.sol";
 
 contract LicredityAccountExecuteTest is PeripheryDeployers {
     LicredityAccount account;
@@ -144,7 +143,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
 
     function test_licredityAccount_seize() public {
         uint256 seizedPosition = _getPosition(10 ether, 9.9 ether);
-        oracleMock.setFungibleConfig(FungibleMock.wrap(address(0)), 0.9 ether, 1000); // 1000 / 1_000_000 = 0.1%
+        oracleMock.setFungibleConfig(Fungible.wrap(address(0)), 0.9 ether, 1000); // 1000 / 1_000_000 = 0.1%
 
         AccountPlan memory planner = AccountPlanner.init();
 

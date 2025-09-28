@@ -3,8 +3,11 @@ pragma solidity ^0.8.17;
 
 import {Test} from "@forge-std/Test.sol";
 import {Licredity} from "@licredity-v1-core/Licredity.sol";
+import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
-import {OracleMock, Fungible, BaseERC20Mock, NonFungibleMock} from "@licredity-v1-test/utils/Deployer.sol";
+import {OracleMock} from "@licredity-v1-core/test/OracleMock.sol";
+import {BaseERC20Mock} from "@licredity-v1-core/test/BaseERC20Mock.sol";
+import {NonFungibleMock} from "@licredity-v1-core/test/NonFungibleMock.sol";
 
 contract PeripheryDeployers is Test {
     address constant PERMIT2_ADDRESS = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
