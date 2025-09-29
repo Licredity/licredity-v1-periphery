@@ -191,9 +191,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
 
         uint256 positionId = account.openPosition(licredity);
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
-            zeroForOne: false,
-            amountSpecified: int256(-0.2 ether),
-            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
+            zeroForOne: false, amountSpecified: int256(-0.2 ether), sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
         });
         SwapPlan memory swapPlan = SwapPlanner.init();
 
@@ -215,9 +213,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         SwapPlan memory swapPlan = SwapPlanner.init();
 
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
-            zeroForOne: false,
-            amountSpecified: int256(0.02 ether),
-            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
+            zeroForOne: false, amountSpecified: int256(0.02 ether), sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
         });
 
         swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));
@@ -246,9 +242,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         SwapPlan memory swapPlan = SwapPlanner.init();
 
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: int256(-0.02 ether),
-            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-3)
+            zeroForOne: true, amountSpecified: int256(-0.02 ether), sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-3)
         });
 
         swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));
