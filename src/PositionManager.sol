@@ -62,13 +62,20 @@ contract PositionManager is
     }
 
     modifier checkDeadline(uint256 deadline) {
-        require(block.timestamp <= deadline, DeadlinePassed(deadline));
+        _checkDeadline(deadline);
         _;
     }
 
+    function _checkDeadline(uint256 deadline) internal view {
+        require(block.timestamp <= deadline, DeadlinePassed(deadline));
+    }
     modifier onlyIfApproved(address caller, uint256 tokenId) {
-        require(_isApprovedOrOwner(caller, tokenId), NotApproved(caller));
+        _onlyIfApproved(caller, tokenId);
         _;
+    }
+
+    function _onlyIfApproved(address caller, uint256 tokenId) internal view {
+        require(_isApprovedOrOwner(caller, tokenId), NotApproved(caller));
     }
 
     function msgSender() internal view returns (address) {

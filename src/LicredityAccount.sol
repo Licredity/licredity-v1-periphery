@@ -41,8 +41,12 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
     }
 
     modifier checkDeadline(uint256 deadline) {
-        require(block.timestamp <= deadline, DeadlinePassed(deadline));
+        _checkDeadline(deadline);
         _;
+    }
+
+    function _checkDeadline(uint256 deadline) internal view {
+        require(block.timestamp <= deadline, DeadlinePassed(deadline));
     }
 
     function msgSender() internal view returns (address) {
