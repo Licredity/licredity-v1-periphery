@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.24;
 
-import {ActionsData} from "src/types/Actions.sol";
 import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IPositionManagerConfig} from "./IPositionManagerConfig.sol";
