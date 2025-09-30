@@ -13,8 +13,7 @@ import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
-import {BaseERC20Mock} from "@licredity-v1-test/utils/Deployer.sol";
-import {Fungible as FungibleMock} from "@licredity-v1-test/utils/Deployer.sol";
+import {BaseERC20Mock} from "@licredity-v1-core/test/BaseERC20Mock.sol";
 
 contract PositionManagerTest is PeripheryDeployers {
     error NotMinted();
@@ -45,7 +44,7 @@ contract PositionManagerTest is PeripheryDeployers {
 
         _deadline = block.timestamp + 1;
 
-        oracleMock.setFungibleConfig(FungibleMock.wrap(address(testToken)), 1 ether, 100_000); // 10%
+        oracleMock.setFungibleConfig(Fungible.wrap(address(testToken)), 1 ether, 100_000); // 10%
     }
 
     function test_mint_notWhitelist(ILicredity other) public {
@@ -521,7 +520,7 @@ contract PositionManagerTest is PeripheryDeployers {
 
     //     manager.execute(calls, _deadline);
     //     assertEq(manager.ownerOf(1), address(this));
-    //     oracleMock.setFungibleConfig(FungibleMock.wrap(address(testToken)), 0.5 ether, 100_000); // 10%
+    //     oracleMock.setFungibleConfig(Fungible.wrap(address(testToken)), 0.5 ether, 100_000); // 10%
 
     //     vm.startPrank(address(0xc0de));
     //     testToken.approve(address(manager), 100 ether);

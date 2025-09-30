@@ -48,7 +48,15 @@ abstract contract UniswapV4Router {
             calldatacopy(add(fmp, 0x80), positionCalldata.offset, positionParamsLength)
 
             let success :=
-                call(gas(), _positionManager, positionValue, add(fmp, 0x1c), add(positionParamsLength, 0x64), 0x00, 0x00)
+                call(
+                    gas(),
+                    _positionManager,
+                    positionValue,
+                    add(fmp, 0x1c),
+                    add(positionParamsLength, 0x64),
+                    0x00,
+                    0x00
+                )
 
             if iszero(success) {
                 mstore(0x00, 0x0cb6ac70) // `PositionManagerCallFail()`

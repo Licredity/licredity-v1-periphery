@@ -10,14 +10,13 @@ fs_permissions = [
 remappings = [
     "@forge-std/=dependencies/forge-std-1.9.7/src",
     "@licredity-v1-core/=dependencies/licredity-v1-core-1.0.0/src",
-    "@licredity-v1-test/=dependencies/licredity-v1-core-1.0.0/test",
     "@uniswap-v4-core/=dependencies/uniswap-v4-core-4/src",
 ]
 
 [dependencies]
 forge-std = "1.9.7"
 uniswap-v4-core = "4"
-licredity-v1-core = { version = "1.0.0", git = "git@github.com:Licredity/licredity-v1-core.git", rev = "27e43324a78879719ced0f51f65462a729bf3a29" }
+licredity-v1-core = { version = "1.0.0", git = "git@github.com:Licredity/licredity-v1-core.git", rev = "1dfeb32570695c6f263811f43da0b47394022909" }
 
 [rpc_endpoints]
 ETH = "${ETH_RPC_URL}"

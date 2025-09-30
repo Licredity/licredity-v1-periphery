@@ -70,9 +70,7 @@ abstract contract LicredityRouter {
         licredity.withdrawNonFungible(positionId, recipient, nft);
     }
 
-    function _increaseDebtAmount(ILicredity licredity, uint256 positionId, address recipient, uint256 amount)
-        internal
-    {
+    function _increaseDebtAmount(ILicredity licredity, uint256 positionId, address recipient, uint256 amount) internal {
         (uint256 totalShares, uint256 totalAssets) = licredity.getTotalDebt();
         uint256 shareDelta = amount.fullMulDiv(totalShares, totalAssets);
 
@@ -110,9 +108,13 @@ abstract contract LicredityRouter {
         }
     }
 
-    function _decreaseDebtShare(ILicredity licredity, uint256 positionId, address payer, uint256 delta, bool useBalance)
-        internal
-    {
+    function _decreaseDebtShare(
+        ILicredity licredity,
+        uint256 positionId,
+        address payer,
+        uint256 delta,
+        bool useBalance
+    ) internal {
         (uint256 totalShares, uint256 totalAssets) = licredity.getTotalDebt();
 
         if (delta == ActionConstants.OPEN_DELTA) {

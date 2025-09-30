@@ -95,9 +95,7 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         SwapPlan memory swapPlan = SwapPlanner.init();
 
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
-            zeroForOne: false,
-            amountSpecified: int256(-0.2 ether),
-            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
+            zeroForOne: false, amountSpecified: int256(-0.2 ether), sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
         });
         swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));
         bytes memory swapCallData = swapPlan.finalizeSwap(poolKey.currency1, poolKey.currency0, address(this), false);
@@ -117,9 +115,7 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         SwapPlan memory swapPlan = SwapPlanner.init();
 
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
-            zeroForOne: false,
-            amountSpecified: int256(0.02 ether),
-            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
+            zeroForOne: false, amountSpecified: int256(0.02 ether), sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
         });
 
         swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));
@@ -149,9 +145,7 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         SwapPlan memory swapPlan = SwapPlanner.init();
 
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: int256(-0.02 ether),
-            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-3)
+            zeroForOne: true, amountSpecified: int256(-0.02 ether), sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-3)
         });
 
         swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));

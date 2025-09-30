@@ -8,7 +8,7 @@ import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
-import {BaseERC20Mock} from "@licredity-v1-test/utils/Deployer.sol";
+import {BaseERC20Mock} from "@licredity-v1-core/test/BaseERC20Mock.sol";
 
 contract LicredityAccountTest is PeripheryDeployers {
     LicredityAccount account;

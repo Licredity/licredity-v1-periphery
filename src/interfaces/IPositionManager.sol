@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.24;
 
-import {ActionsData} from "src/types/Actions.sol";
+import {ActionsData} from "../types/Actions.sol";
 import {IPositionManagerConfig} from "./IPositionManagerConfig.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 
