@@ -9,7 +9,7 @@ integrity = "9e60fdba82bc374df80db7f2951faff6467b9091873004a3d314cf0c084b3c7d"
 name = "licredity-v1-core"
 version = "1.0.0"
 git = "git@github.com:Licredity/licredity-v1-core.git"
-rev = "1dfeb32570695c6f263811f43da0b47394022909"
+rev = "67dac88614e0e221688270e3c445a82a29626ebb"
 
 [[dependencies]]
 name = "uniswap-v4-core"

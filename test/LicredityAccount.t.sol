@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {LicredityAccount} from "src/LicredityAccount.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
-import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
+import {NonFungible, NonFungibleLibrary} from "@licredity-v1-core/types/NonFungible.sol";
 import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
@@ -62,15 +62,9 @@ contract LicredityAccountTest is PeripheryDeployers {
         assertEq(testToken.balanceOf(address(1)), 1 ether);
     }
 
-    function getNonFungible(address token, uint256 tokenId) internal pure returns (NonFungible nft) {
-        assembly ("memory-safe") {
-            nft := or(shl(96, token), and(tokenId, 0xffffffffffffffff))
-        }
-    }
-
     function test_whithdraw_nonFungible() public {
         nonFungibleMock.mint(address(account), 1);
-        NonFungible nft = getNonFungible(address(nonFungibleMock), 1);
+        NonFungible nft = NonFungibleLibrary.from(address(nonFungibleMock), 1);
 
         account.sweepNonFungible(nft, address(1));
         assertEq(nonFungibleMock.ownerOf(1), address(1));
