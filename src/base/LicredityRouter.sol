@@ -5,7 +5,7 @@ import {LicredityStateView} from "../libraries/LicredityStateView.sol";
 import {ActionConstants} from "../libraries/ActionConstants.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
-import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
+import {NonFungible, NonFungibleLibrary} from "@licredity-v1-core/types/NonFungible.sol";
 import {FullMath} from "@licredity-v1-core/libraries/FullMath.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IERC721} from "@forge-std/interfaces/IERC721.sol";
@@ -30,12 +30,6 @@ abstract contract LicredityRouter {
         }
     }
 
-    function getNonFungible(address token, uint256 tokenId) internal pure returns (NonFungible nft) {
-        assembly ("memory-safe") {
-            nft := or(shl(96, token), and(tokenId, 0xffffffffffffffff))
-        }
-    }
-
     function _depositNonFungible(
         ILicredity licredity,
         uint256 positionId,
@@ -43,7 +37,7 @@ abstract contract LicredityRouter {
         address token,
         uint256 tokenId
     ) internal {
-        NonFungible nft = getNonFungible(token, tokenId);
+        NonFungible nft = NonFungibleLibrary.from(token, tokenId);
         licredity.stageNonFungible(nft);
         IERC721(token).transferFrom(payer, address(licredity), tokenId);
         licredity.depositNonFungible(positionId);
@@ -66,7 +60,7 @@ abstract contract LicredityRouter {
         address token,
         uint256 tokenId
     ) internal {
-        NonFungible nft = getNonFungible(token, tokenId);
+        NonFungible nft = NonFungibleLibrary.from(token, tokenId);
         licredity.withdrawNonFungible(positionId, recipient, nft);
     }
 
