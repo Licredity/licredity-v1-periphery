@@ -85,7 +85,7 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
     }
 
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
-        if (msg.sender == address(poolManager)) {
+        if (msg.sender == address(POOL_MANAGER)) {
             (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
             uint256 numActions = actions.length;
             require(numActions == params.length, InputLengthMismatch());

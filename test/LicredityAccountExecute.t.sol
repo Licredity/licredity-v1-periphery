@@ -129,16 +129,16 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         account.execute(licredity, planner.encode(), _deadline);
     }
 
-    function _getPosition(uint256 depositETHAmount, uint256 borrowETHAmount) internal returns (uint256 positionId) {
+    function _getPosition(uint256 depositEthAmount, uint256 borrowEthAmount) internal returns (uint256 positionId) {
         positionId = otherAccount.openPosition(licredity);
 
         AccountPlan memory planner = AccountPlanner.init();
 
         planner.add(Actions.SWITCH, abi.encode(positionId));
-        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), depositETHAmount));
-        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(ActionConstants.ADDRESS_THIS, borrowETHAmount));
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), depositEthAmount));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(ActionConstants.ADDRESS_THIS, borrowEthAmount));
 
-        otherAccount.execute{value: depositETHAmount}(licredity, planner.encode(), _deadline);
+        otherAccount.execute{value: depositEthAmount}(licredity, planner.encode(), _deadline);
     }
 
     function test_licredityAccount_seize() public {

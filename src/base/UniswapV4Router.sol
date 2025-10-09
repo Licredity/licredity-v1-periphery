@@ -14,8 +14,8 @@ abstract contract UniswapV4Router {
     /// @notice Emitted trying to take a negative delta.
     error DeltaNotNegative(Currency currency);
 
-    IPoolManager public immutable poolManager;
-    address public immutable positionManager;
+    IPoolManager public immutable POOL_MANAGER;
+    address public immutable POSITION_MANAGER;
 
     uint256 constant OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN = 0xffffffe0;
 
@@ -24,12 +24,12 @@ abstract contract UniswapV4Router {
     uint256 constant SWAP_SELECTOR = 0xf3cd914c;
 
     constructor(IPoolManager _poolManager, address _positionManager) {
-        poolManager = _poolManager;
-        positionManager = _positionManager;
+        POOL_MANAGER = _poolManager;
+        POSITION_MANAGER = _positionManager;
     }
 
     function _positionManagerCall(uint256 positionValue, bytes calldata positionCalldata) internal {
-        address _positionManager = positionManager;
+        address _positionManager = POSITION_MANAGER;
 
         assembly ("memory-safe") {
             let fmp := mload(0x40)
@@ -66,7 +66,7 @@ abstract contract UniswapV4Router {
     }
 
     function _uniswapPoolManagerCall(bytes calldata unlockData) internal {
-        IPoolManager _poolManager = poolManager;
+        IPoolManager _poolManager = POOL_MANAGER;
 
         assembly ("memory-safe") {
             let fmp := mload(0x40)
@@ -90,7 +90,7 @@ abstract contract UniswapV4Router {
     }
 
     function _swap(bytes calldata swapCalldata) internal {
-        IPoolManager _poolManager = poolManager;
+        IPoolManager _poolManager = POOL_MANAGER;
 
         assembly ("memory-safe") {
             let fmp := mload(0x40)
@@ -122,12 +122,12 @@ abstract contract UniswapV4Router {
     function _settle(Currency currency, address payer, uint256 amount) internal {
         if (amount == 0) return;
 
-        poolManager.sync(currency);
+        POOL_MANAGER.sync(currency);
         if (currency.isAddressZero()) {
-            poolManager.settle{value: amount}();
+            POOL_MANAGER.settle{value: amount}();
         } else {
-            _pay(currency, payer, address(poolManager), amount);
-            poolManager.settle();
+            _pay(currency, payer, address(POOL_MANAGER), amount);
+            POOL_MANAGER.settle();
         }
     }
 
@@ -138,7 +138,7 @@ abstract contract UniswapV4Router {
     /// @dev Returns early if the amount is 0
     function _take(Currency currency, address recipient, uint256 amount) internal {
         if (amount == 0) return;
-        poolManager.take(currency, recipient, amount);
+        POOL_MANAGER.take(currency, recipient, amount);
     }
 
     /// @notice Abstract function for contracts to implement paying tokens to the poolManager
@@ -152,7 +152,7 @@ abstract contract UniswapV4Router {
     /// @param currency Currency to get the delta for
     /// @return amount The amount owed by this contract as a uint256
     function _getFullDebt(Currency currency) internal view returns (uint256 amount) {
-        int256 _amount = poolManager.currencyDelta(address(this), currency);
+        int256 _amount = POOL_MANAGER.currencyDelta(address(this), currency);
         // If the amount is positive, it should be taken not settled.
         if (_amount > 0) revert DeltaNotNegative(currency);
         // Casting is safe due to limits on the total supply of a pool
@@ -163,7 +163,7 @@ abstract contract UniswapV4Router {
     /// @param currency Currency to get the delta for
     /// @return amount The amount owed to this contract as a uint256
     function _getFullCredit(Currency currency) internal view returns (uint256 amount) {
-        int256 _amount = poolManager.currencyDelta(address(this), currency);
+        int256 _amount = POOL_MANAGER.currencyDelta(address(this), currency);
         // If the amount is negative, it should be settled not taken.
         if (_amount < 0) revert DeltaNotPositive(currency);
         amount = uint256(_amount);

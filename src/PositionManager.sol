@@ -148,13 +148,13 @@ contract PositionManager is
                 usingLicredity = ILicredity(address(0));
                 usingLicredityPositionId = 0;
             } else {
-                poolManager.unlock(input.unlockData);
+                POOL_MANAGER.unlock(input.unlockData);
             }
         }
     }
 
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
-        if (msg.sender == address(poolManager)) {
+        if (msg.sender == address(POOL_MANAGER)) {
             (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
             uint256 numActions = actions.length;
             require(numActions == params.length, InputLengthMismatch());
