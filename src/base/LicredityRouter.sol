@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {LicredityStateView} from "../libraries/LicredityStateView.sol";
 import {ActionConstants} from "../libraries/ActionConstants.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {NonFungible, NonFungibleLibrary} from "@licredity-v1-core/types/NonFungible.sol";
 import {FullMath} from "@licredity-v1-core/libraries/FullMath.sol";
+import {StateLibrary} from "@licredity-v1-core/libraries/StateLibrary.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IERC721} from "@forge-std/interfaces/IERC721.sol";
 
 abstract contract LicredityRouter {
     using FullMath for uint256;
-    using LicredityStateView for ILicredity;
+    using StateLibrary for ILicredity;
 
     function _depositFungible(ILicredity licredity, uint256 positionId, address payer, address token, uint256 amount)
         internal
@@ -65,7 +65,9 @@ abstract contract LicredityRouter {
     }
 
     function _increaseDebtAmount(ILicredity licredity, uint256 positionId, address recipient, uint256 amount) internal {
-        (uint256 totalShares, uint256 totalAssets) = licredity.getTotalDebt();
+        uint256 totalShares = licredity.totalDebtShare();
+        uint256 totalAssets = licredity.totalDebtBalance();
+
         uint256 shareDelta = amount.fullMulDiv(totalShares, totalAssets);
 
         licredity.increaseDebtShare(positionId, shareDelta, recipient);
@@ -82,7 +84,9 @@ abstract contract LicredityRouter {
         uint256 amount,
         bool useBalance
     ) internal {
-        (uint256 totalShares, uint256 totalAssets) = licredity.getTotalDebt();
+        uint256 totalShares = licredity.totalDebtShare();
+        uint256 totalAssets = licredity.totalDebtBalance();
+
         uint256 shareDelta;
 
         if (amount == ActionConstants.OPEN_DELTA) {
@@ -109,7 +113,8 @@ abstract contract LicredityRouter {
         uint256 delta,
         bool useBalance
     ) internal {
-        (uint256 totalShares, uint256 totalAssets) = licredity.getTotalDebt();
+        uint256 totalShares = licredity.totalDebtShare();
+        uint256 totalAssets = licredity.totalDebtBalance();
 
         if (delta == ActionConstants.OPEN_DELTA) {
             delta = licredity.getPositionDebtShare(positionId);
@@ -133,7 +138,7 @@ abstract contract LicredityRouter {
     }
 
     function _exchangeFungible(ILicredity licredity, address payer, address recipient, uint256 amount) internal {
-        Fungible baseFungible = LicredityStateView.getBaseFungible(licredity);
+        Fungible baseFungible = licredity.baseFungible();
 
         if (baseFungible.isNative()) {
             licredity.exchangeFungible{value: amount}(recipient, true);
