@@ -87,6 +87,38 @@ contract PositionManagerWithUniswapV4Test is PeripheryDeployers {
         assertEq(IERC721(uniswapV4PositionManager).ownerOf(1), address(this));
     }
 
+    function test_initializeLiquidity_deposit() public {
+        uint256 tokenId = licredityManager.mint(licredity);
+
+        PositionPlan memory positionPlan = PositionPlanner.init();
+        positionPlan.add(
+            UniswapV4Actions.MINT_POSITION,
+            abi.encode(
+                poolKey,
+                int24(-2),
+                int24(2),
+                uint256(10000.5 ether),
+                uint128(1 ether),
+                uint128(1 ether),
+                ActionConstants.MSG_SENDER,
+                bytes("")
+            )
+        );
+        positionPlan.add(UniswapV4Actions.SETTLE_PAIR, abi.encode(poolKey.currency0, poolKey.currency1));
+        positionPlan.add(UniswapV4Actions.SWEEP, abi.encode(address(0), address(this)));
+        bytes memory positionManagerCalldata = positionPlan.encode();
+
+        Plan memory planner = Planner.init(tokenId);
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(true, address(0), 1.1 ether));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(ActionConstants.ADDRESS_THIS, 1 ether));
+        planner.add(Actions.UNISWAP_V4_POSITION_MANAGER_CALL, abi.encode(1 ether, positionManagerCalldata));
+        planner.add(Actions.DEPOSIT_NON_FUNGIBLE, abi.encode(false, uniswapV4PositionManager, ActionConstants.DEPOSIT_TOKEN_ID));
+
+        ActionsData[] memory calls = planner.finalize();
+
+        licredityManager.execute{value: 2.1 ether}(calls, _deadline);
+    }
+
     function test_swap() public {
         test_initializeLiquidity();
 

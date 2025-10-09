@@ -11,6 +11,7 @@ import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {ILicredityAccount} from "./interfaces/ILicredityAccount.sol";
 import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
+import {IUniswapV4PositionManager} from "./interfaces/external/IUniswapV4PositionManager.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
@@ -142,7 +143,7 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
             return;
         } else if (action == Actions.DEPOSIT_NON_FUNGIBLE) {
             (bool payerIsUser, address token, uint256 tokenId) = params.decodeBoolAddressAndUint256();
-            _depositNonFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, tokenId);
+            _depositNonFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, _mapTokenId(token, tokenId));
 
             return;
         } else if (action == Actions.WITHDRAW_FUNGIBLE) {
@@ -224,6 +225,15 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
             return address(this);
         } else {
             return recipient;
+        }
+    }
+
+    function _mapTokenId(address token, uint256 tokenId) internal view returns (uint256) {
+        if (tokenId == ActionConstants.DEPOSIT_TOKEN_ID) {
+            uint256 nextUniswapV4PositionTokenId = IUniswapV4PositionManager(token).nextTokenId();
+            return nextUniswapV4PositionTokenId - 1;
+        } else {
+            return tokenId;
         }
     }
 
