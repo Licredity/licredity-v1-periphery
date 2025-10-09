@@ -19,5 +19,5 @@ library ActionConstants {
     address internal constant ADDRESS_THIS = address(2);
 
     /// @notice used to signal that the tokenId of an action should be the deposit tokenId
-    uint256 internal constant DEPOSIT_TOKEN_ID = 1;
+    uint256 internal constant DEPOSIT_TOKEN_ID = 0;
 }
