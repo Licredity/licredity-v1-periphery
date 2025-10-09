@@ -209,12 +209,12 @@ contract CalldataDecoderTest is Test {
         decoder.decodeCurrencyAddressAndUint256(invalidParams);
     }
 
-    function test_fuzz_decodeCurrencyAndAddress(Currency _currency, address __address) public view {
-        bytes memory params = abi.encode(_currency, __address);
-        (Currency currency, address _address) = decoder.decodeCurrencyAndAddress(params);
+    function test_fuzz_decodeCurrencyAndAddress(Currency _currency, address _address) public view {
+        bytes memory params = abi.encode(_currency, _address);
+        (Currency decodeCurrency, address decodeAddress) = decoder.decodeCurrencyAndAddress(params);
 
-        assertEq(Currency.unwrap(currency), Currency.unwrap(_currency));
-        assertEq(_address, __address);
+        assertEq(Currency.unwrap(decodeCurrency), Currency.unwrap(_currency));
+        assertEq(decodeAddress, _address);
     }
 
     function test_decodeCurrencyAndAddress_outOutBounds() public {

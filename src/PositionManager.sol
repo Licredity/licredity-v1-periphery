@@ -12,6 +12,7 @@ import {PositionInfo, PositionInfoLibrary} from "./types/PositionInfo.sol";
 import {ActionsData, Actions} from "./types/Actions.sol";
 import {ActionConstants} from "./libraries/ActionConstants.sol";
 import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
+import {IUniswapV4PositionManager} from "./interfaces/external/IUniswapV4PositionManager.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
@@ -147,13 +148,13 @@ contract PositionManager is
                 usingLicredity = ILicredity(address(0));
                 usingLicredityPositionId = 0;
             } else {
-                poolManager.unlock(input.unlockData);
+                POOL_MANAGER.unlock(input.unlockData);
             }
         }
     }
 
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
-        if (msg.sender == address(poolManager)) {
+        if (msg.sender == address(POOL_MANAGER)) {
             (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
             uint256 numActions = actions.length;
             require(numActions == params.length, InputLengthMismatch());
@@ -188,7 +189,7 @@ contract PositionManager is
             return;
         } else if (action == Actions.DEPOSIT_NON_FUNGIBLE) {
             (bool payerIsUser, address token, uint256 tokenId) = params.decodeBoolAddressAndUint256();
-            _depositNonFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, tokenId);
+            _depositNonFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, _mapTokenId(token, tokenId));
 
             return;
         } else if (action == Actions.WITHDRAW_FUNGIBLE) {
@@ -285,6 +286,15 @@ contract PositionManager is
             return address(this);
         } else {
             return recipient;
+        }
+    }
+
+    function _mapTokenId(address token, uint256 tokenId) internal view returns (uint256) {
+        if (tokenId == ActionConstants.DEPOSIT_TOKEN_ID) {
+            uint256 nextUniswapV4PositionTokenId = IUniswapV4PositionManager(token).nextTokenId();
+            return nextUniswapV4PositionTokenId - 1;
+        } else {
+            return tokenId;
         }
     }
 

@@ -9,7 +9,7 @@ import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 contract PositionManagerConfig is IPositionManagerConfig {
     address internal governor;
     address internal nextGovernor;
-    IAllowanceTransfer immutable permit2;
+    IAllowanceTransfer immutable PERMIT2;
 
     mapping(ILicredity market => bool) internal isWhitelisted;
     mapping(address router => bool) internal isWhitelistedRouter;
@@ -31,7 +31,7 @@ contract PositionManagerConfig is IPositionManagerConfig {
 
     constructor(address _governor, IAllowanceTransfer _permit2) {
         governor = _governor;
-        permit2 = _permit2;
+        PERMIT2 = _permit2;
     }
 
     /// @notice Appoints the next governor
@@ -82,8 +82,8 @@ contract PositionManagerConfig is IPositionManagerConfig {
         external
         onlyGovernor
     {
-        IERC20(token).approve(address(permit2), amount);
-        permit2.approve(token, spender, amount, expiration);
+        IERC20(token).approve(address(PERMIT2), amount);
+        PERMIT2.approve(token, spender, amount, expiration);
     }
 
     function updateTokenApporve(address token, address spender, uint256 amount) external onlyGovernor {
