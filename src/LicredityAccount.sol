@@ -7,86 +7,63 @@ import {PositionManagerConfig} from "./PositionManagerConfig.sol";
 import {Actions} from "./types/Actions.sol";
 import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
 import {ActionConstants} from "./libraries/ActionConstants.sol";
-import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
-import {Currency} from "@uniswap-v4-core/types/Currency.sol";
-import {ILicredityAccount} from "./interfaces/ILicredityAccount.sol";
+import {ILicredityExecutor} from "./interfaces/ILicredityAccount.sol";
 import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
 import {IUniswapV4PositionManager} from "./interfaces/external/IUniswapV4PositionManager.sol";
+import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
+import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
-contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter, PositionManagerConfig {
+contract LicredityAccount is ILicredityExecutor, UniswapV4Router, LicredityRouter, PositionManagerConfig {
     using CalldataDecoder for bytes;
 
-    address transient lockedBy;
-    ILicredity transient usingLicredity;
-    uint256 transient usingLicredityPositionId;
+    address transient msgSender;
 
     constructor(
-        address _governor,
         IPoolManager _uniswapV4poolManager,
         address _uniswapV4PostionManager,
         IAllowanceTransfer _permit2
     )
         UniswapV4Router(_uniswapV4poolManager, _uniswapV4PostionManager)
-        PositionManagerConfig(_governor, _permit2)
+        PositionManagerConfig(_permit2)
         LicredityRouter()
     {}
 
-    modifier isNotLocked() {
-        require(lockedBy == address(0), ContractLocked());
-        lockedBy = msg.sender;
+    modifier isNotLocked(address sender) {
+        require(msgSender == address(0), ContractLocked());
+        msgSender = sender;
         _;
-        lockedBy = address(0);
+        msgSender = address(0);
     }
 
-    modifier checkDeadline(uint256 deadline) {
-        _checkDeadline(deadline);
-        _;
+    function checkDeadline(uint256 deadline) internal view {
+        if (deadline < block.timestamp) {
+            revert DeadlinePassed(deadline);
+        }
     }
+    
+    function execute(address sender, bytes calldata data) external isNotLocked(sender) payable returns (bytes memory) {
+        uint256 deadline = data.decodeOffset(0x00);
+        (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams(0x20);
+        checkDeadline(deadline);
+        
+        uint256 numActions = actions.length;
+        require(numActions == params.length, InputLengthMismatch());
 
-    function _checkDeadline(uint256 deadline) internal view {
-        require(block.timestamp <= deadline, DeadlinePassed(deadline));
-    }
+        for (uint256 actionIndex = 0; actionIndex < numActions; actionIndex++) {
+            uint256 action = uint8(actions[actionIndex]);
 
-    function msgSender() internal view returns (address) {
-        return lockedBy;
-    }
+            _handleLicredityAction(ILicredity(msg.sender), action, params[actionIndex]);
+        }
 
-    function openPosition(ILicredity market) external onlyGovernor returns (uint256 positionId) {
-        return market.openPosition();
-    }
-
-    function closePosition(ILicredity market, uint256 positionId) external onlyGovernor {
-        return market.closePosition(positionId);
-    }
-
-    function sweepFungible(Currency currency, address recipient, uint256 amount) external onlyGovernor {
-        currency.transfer(recipient, amount);
-    }
-
-    function sweepNonFungible(NonFungible nonFungible, address recipient) external onlyGovernor {
-        nonFungible.transfer(recipient);
-    }
-
-    function execute(ILicredity licredity, bytes calldata inputs, uint256 deadline)
-        external
-        payable
-        isNotLocked
-        checkDeadline(deadline)
-    {
-        usingLicredity = licredity;
-
-        usingLicredity.unlock(inputs);
-
-        usingLicredity = ILicredity(address(0));
-        usingLicredityPositionId = 0;
+        return "";
     }
 
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
         if (msg.sender == address(POOL_MANAGER)) {
-            (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
+            (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams(0x00);
             uint256 numActions = actions.length;
             require(numActions == params.length, InputLengthMismatch());
 
@@ -94,16 +71,6 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
                 uint256 action = uint8(actions[actionIndex]);
 
                 _handleUniswapV4Action(action, params[actionIndex]);
-            }
-        } else if (msg.sender == address(usingLicredity)) {
-            (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams();
-            uint256 numActions = actions.length;
-            require(numActions == params.length, InputLengthMismatch());
-
-            for (uint256 actionIndex = 0; actionIndex < numActions; actionIndex++) {
-                uint256 action = uint8(actions[actionIndex]);
-
-                _handleLicredityAction(action, params[actionIndex]);
             }
         } else {
             revert NotSafeCallback();
@@ -131,53 +98,51 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
         }
     }
 
-    function _handleLicredityAction(uint256 action, bytes calldata params) internal {
-        if (action == Actions.SWITCH) {
-            uint256 positionId = params.decodePositionId();
-            usingLicredityPositionId = positionId;
-            return;
-        } else if (action == Actions.DEPOSIT_FUNGIBLE) {
-            (bool payerIsUser, address token, uint256 amount) = params.decodeBoolAddressAndUint256();
-            _depositFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, amount);
+    function _handleLicredityAction(ILicredity licredity, uint256 action, bytes calldata params) internal {
+        if (action == Actions.DEPOSIT_FUNGIBLE) {
+            (uint256 positionId, bool payerIsUser, address token, uint256 amount) =
+                params.decodeBoolUint256AddressAndUint256();
+            _depositFungible(licredity, positionId, _mapPayer(payerIsUser), token, amount);
 
             return;
         } else if (action == Actions.DEPOSIT_NON_FUNGIBLE) {
-            (bool payerIsUser, address token, uint256 tokenId) = params.decodeBoolAddressAndUint256();
-            _depositNonFungible(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), token, _mapTokenId(token, tokenId));
+            (uint256 positionId, bool payerIsUser, address token, uint256 tokenId) =
+                params.decodeBoolUint256AddressAndUint256();
+            _depositNonFungible(licredity, positionId, _mapPayer(payerIsUser), token, _mapTokenId(token, tokenId));
 
             return;
         } else if (action == Actions.WITHDRAW_FUNGIBLE) {
-            (address recipient, address token, uint256 amount) = params.decodeWithdraw();
-            _withdrawFungible(usingLicredity, usingLicredityPositionId, _mapRecipient(recipient), token, amount);
+            (uint256 positionId, address recipient, address token, uint256 amount) = params.decodeWithdraw();
+            _withdrawFungible(licredity, positionId, _mapRecipient(recipient), token, amount);
 
             return;
         } else if (action == Actions.WITHDRAW_NON_FUNGIBLE) {
-            (address recipient, address token, uint256 tokenId) = params.decodeWithdraw();
-            _withdrawNonFungible(usingLicredity, usingLicredityPositionId, _mapRecipient(recipient), token, tokenId);
+            (uint256 positionId, address recipient, address token, uint256 tokenId) = params.decodeWithdraw();
+            _withdrawNonFungible(licredity, positionId, _mapRecipient(recipient), token, tokenId);
             return;
         } else if (action == Actions.INCREASE_DEBT_AMOUNT) {
-            (address recipient, uint256 amount) = params.decodeIncreaseDebt();
-            _increaseDebtAmount(usingLicredity, usingLicredityPositionId, _mapRecipient(recipient), amount);
+            (uint256 positionId, address recipient, uint256 amount) = params.decodeIncreaseDebt();
+            _increaseDebtAmount(licredity, positionId, _mapRecipient(recipient), amount);
             return;
         } else if (action == Actions.INCREASE_DEBT_SHARE) {
-            (address recipient, uint256 shares) = params.decodeIncreaseDebt();
-            _increaseDebtShare(usingLicredity, usingLicredityPositionId, _mapRecipient(recipient), shares);
+            (uint256 positionId, address recipient, uint256 shares) = params.decodeIncreaseDebt();
+            _increaseDebtShare(licredity, positionId, _mapRecipient(recipient), shares);
             return;
         } else if (action == Actions.DECREASE_DEBT_AMOUNT) {
-            (bool payerIsUser, uint256 amount, bool useBalance) = params.decodeDecreaseDebt();
-            _decreaseDebtAmount(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), amount, useBalance);
+            (uint256 positionId, uint256 amount, bool useBalance) = params.decodeDecreaseDebt();
+            _decreaseDebtAmount(licredity, positionId, amount, useBalance);
             return;
         } else if (action == Actions.DECREASE_DEBT_SHARE) {
-            (bool payerIsUser, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
-            _decreaseDebtShare(usingLicredity, usingLicredityPositionId, _mapPayer(payerIsUser), shares, useBalance);
+            (uint256 positionId, uint256 shares, bool useBalance) = params.decodeDecreaseDebt();
+            _decreaseDebtShare(licredity, positionId, shares, useBalance);
             return;
         } else if (action == Actions.SEIZE) {
-            uint256 positionId = params.decodePositionId();
-            _seize(usingLicredity, positionId);
+            (uint256 positionId, address recipient) = params.decodeSeizedPosition();
+            _seize(licredity, positionId, _mapRecipient(recipient));
             return;
         } else if (action == Actions.EXCHANGE) {
             (bool payerIsUser, address recipient, uint256 amount) = params.decodeBoolAddressAndUint256();
-            _exchangeFungible(usingLicredity, _mapPayer(payerIsUser), _mapRecipient(recipient), amount);
+            _exchangeFungible(licredity, _mapPayer(payerIsUser), _mapRecipient(recipient), amount);
             return;
         } else if (action == Actions.UNISWAP_V4_POSITION_MANAGER_CALL) {
             (uint256 positionValue, bytes calldata positionParams) = params.decodeCallValueAndData();
@@ -220,7 +185,7 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
     /// @notice Calculates the address for a action
     function _mapRecipient(address recipient) internal view returns (address) {
         if (recipient == ActionConstants.MSG_SENDER) {
-            return msgSender();
+            return msgSender;
         } else if (recipient == ActionConstants.ADDRESS_THIS) {
             return address(this);
         } else {
@@ -239,7 +204,7 @@ contract LicredityAccount is ILicredityAccount, UniswapV4Router, LicredityRouter
 
     /// @notice Calculates the payer for an action
     function _mapPayer(bool payerIsUser) internal view returns (address) {
-        return payerIsUser ? msgSender() : address(this);
+        return payerIsUser ? msgSender : address(this);
     }
 
     function _pay(Currency currency, address payer, address recipient, uint256 amount)

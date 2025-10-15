@@ -6,13 +6,13 @@ import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {NonFungible, NonFungibleLibrary} from "@licredity-v1-core/types/NonFungible.sol";
 import {FullMath} from "@licredity-v1-core/libraries/FullMath.sol";
-import {StateLibrary} from "@licredity-v1-core/libraries/StateLibrary.sol";
+import {PositionStateView} from "@licredity-v1-core/libraries/PositionStateView.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IERC721} from "@forge-std/interfaces/IERC721.sol";
 
 abstract contract LicredityRouter {
     using FullMath for uint256;
-    using StateLibrary for ILicredity;
+    using PositionStateView for ILicredity;
 
     function _depositFungible(ILicredity licredity, uint256 positionId, address payer, address token, uint256 amount)
         internal
@@ -64,7 +64,9 @@ abstract contract LicredityRouter {
         licredity.withdrawNonFungible(positionId, recipient, nft);
     }
 
-    function _increaseDebtAmount(ILicredity licredity, uint256 positionId, address recipient, uint256 amount) internal {
+    function _increaseDebtAmount(ILicredity licredity, uint256 positionId, address recipient, uint256 amount)
+        internal
+    {
         uint256 totalShares = licredity.totalDebtShare();
         uint256 totalAssets = licredity.totalDebtBalance();
 
@@ -80,7 +82,6 @@ abstract contract LicredityRouter {
     function _decreaseDebtAmount(
         ILicredity licredity,
         uint256 positionId,
-        address payer,
         uint256 amount,
         bool useBalance
     ) internal {
@@ -98,24 +99,13 @@ abstract contract LicredityRouter {
         if (useBalance) {
             licredity.decreaseDebtShare(positionId, shareDelta, true);
         } else {
-            if (payer != address(this)) {
-                _pay(Currency.wrap(address(licredity)), payer, address(this), amount);
-            }
-
             licredity.decreaseDebtShare(positionId, shareDelta, false);
         }
     }
 
-    function _decreaseDebtShare(
-        ILicredity licredity,
-        uint256 positionId,
-        address payer,
-        uint256 delta,
-        bool useBalance
-    ) internal {
-        uint256 totalShares = licredity.totalDebtShare();
-        uint256 totalAssets = licredity.totalDebtBalance();
-
+    function _decreaseDebtShare(ILicredity licredity, uint256 positionId, uint256 delta, bool useBalance)
+        internal
+    {
         if (delta == ActionConstants.OPEN_DELTA) {
             delta = licredity.getPositionDebtShare(positionId);
         }
@@ -123,18 +113,12 @@ abstract contract LicredityRouter {
         if (useBalance) {
             licredity.decreaseDebtShare(positionId, delta, true);
         } else {
-            uint256 amount = delta.fullMulDivUp(totalAssets, totalShares);
-
-            if (payer != address(this)) {
-                _pay(Currency.wrap(address(licredity)), payer, address(this), amount);
-            }
-
             licredity.decreaseDebtShare(positionId, delta, false);
         }
     }
 
-    function _seize(ILicredity licredity, uint256 positionId) internal {
-        licredity.seizePosition(positionId, address(this));
+    function _seize(ILicredity licredity, uint256 positionId, address recipient) internal {
+        licredity.seizePosition(positionId, recipient);
     }
 
     function _exchangeFungible(ILicredity licredity, address payer, address recipient, uint256 amount) internal {

@@ -34,7 +34,7 @@ library AccountPlanner {
         return plan;
     }
 
-    function encode(AccountPlan memory plan) internal pure returns (bytes memory action) {
-        return abi.encode(plan.actions, plan.params);
+    function encode(AccountPlan memory plan, uint256 deadline) internal pure returns (bytes memory action) {
+        return abi.encode(deadline, plan.actions, plan.params);
     }
 }

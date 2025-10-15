@@ -24,8 +24,6 @@ library Actions {
     uint256 public constant SEIZE = 0x08;
     uint256 public constant EXCHANGE = 0x09;
 
-    uint256 public constant SWITCH = 0x0a;
-
     uint256 public constant UNISWAP_V4_POSITION_MANAGER_CALL = 0x0b;
     uint256 public constant UNISWAP_V4_POOL_MANAGER_CALL = 0x0c;
 
