@@ -16,29 +16,45 @@ library CalldataDecoder {
     /// @notice equivalent to SliceOutOfBounds.selector, stored in least-significant bits
     uint256 constant SLICE_ERROR_SELECTOR = 0x3b99b53d;
 
+    function decodeOffset(bytes calldata _bytes, uint256 position)
+        internal
+        pure
+        returns (uint256 offset)
+    {
+        assembly ("memory-safe") {
+            if lt(_bytes.length, add(position, 0x20)) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
+            offset := calldataload(add(_bytes.offset, position))
+        }
+    }
+    
     /// @dev equivalent to: abi.decode(params, (bytes, bytes[])) in calldata (requires strict abi encoding)
-    function decodeActionsRouterParams(bytes calldata _bytes)
+    function decodeActionsRouterParams(bytes calldata _bytes, uint256 offsets)
         internal
         pure
         returns (bytes calldata actions, bytes[] calldata params)
     {
         assembly ("memory-safe") {
-            // Strict encoding requires that the data begin with:
-            // 0x00: 0x40 (offset to `actions.length`)
-            // 0x20: 0x60 + actions.length (offset to `params.length`)
-            // 0x40: `actions.length`
-            // 0x60: beginning of actions
+            let dataOffset := add(_bytes.offset, offsets)
 
+            // Strict encoding requires that the data begin with:
+            // dataOffset: offsets + 0x40 (offset to `actions.length`)
+            // dataOffset + 0x20: offsets + 0x60 + actions.length (offset to `params.length`)
+            // dataOffset + 0x40: `actions.length`
+            // dataOffset + 0x60: beginning of actions
+            
             // Verify actions offset matches strict encoding
-            let invalidData := xor(calldataload(_bytes.offset), 0x40)
-            actions.offset := add(_bytes.offset, 0x60)
-            actions.length := and(calldataload(add(_bytes.offset, 0x40)), OFFSET_OR_LENGTH_MASK)
+            let invalidData := xor(calldataload(dataOffset), add(offsets, 0x40))
+            actions.offset := add(dataOffset, 0x60)
+            actions.length := and(calldataload(add(dataOffset, 0x40)), OFFSET_OR_LENGTH_MASK)
 
             // Round actions length up to be word-aligned, and add 0x60 (for the first 3 words of encoding)
-            let paramsLengthOffset := add(and(add(actions.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN), 0x60)
+            let paramsLengthOffset := add(and(add(actions.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN), add(0x60, offsets))
             // Verify params offset matches strict encoding
-            invalidData := or(invalidData, xor(calldataload(add(_bytes.offset, 0x20)), paramsLengthOffset))
-            let paramsLengthPointer := add(_bytes.offset, paramsLengthOffset)
+            invalidData := or(invalidData, xor(calldataload(add(dataOffset, 0x20)), paramsLengthOffset))
+            let paramsLengthPointer := add(_bytes.offset, paramsLengthOffset) // _bytes.offset + offset + 0x60 + actions length
             params.length := and(calldataload(paramsLengthPointer), OFFSET_OR_LENGTH_MASK)
             params.offset := add(paramsLengthPointer, 0x20)
 
@@ -82,10 +98,8 @@ library CalldataDecoder {
             positionParams.offset := add(_bytes.offset, 0x60)
             positionParams.length := and(calldataload(add(_bytes.offset, 0x40)), OFFSET_OR_LENGTH_MASK)
 
-            if or(
-                invalidData,
-                lt(add(_bytes.length, _bytes.offset), add(positionParams.offset, positionParams.length))
-            ) {
+            if or(invalidData, lt(add(_bytes.length, _bytes.offset), add(positionParams.offset, positionParams.length)))
+            {
                 mstore(0, SLICE_ERROR_SELECTOR)
                 revert(0x1c, 4)
             }
@@ -95,7 +109,7 @@ library CalldataDecoder {
     function decodeBoolAddressAndUint256(bytes calldata params)
         internal
         pure
-        returns (bool boolean, address token, uint256 amount)
+        returns (bool boolean, address _address, uint256 amount)
     {
         assembly ("memory-safe") {
             if lt(params.length, 0x60) {
@@ -103,51 +117,75 @@ library CalldataDecoder {
                 revert(0x1c, 4)
             }
             boolean := calldataload(params.offset)
-            token := calldataload(add(params.offset, 0x20))
+            _address := calldataload(add(params.offset, 0x20))
             amount := calldataload(add(params.offset, 0x40))
+        }
+    }
+
+    function decodeBoolUint256AddressAndUint256(bytes calldata params)
+        internal
+        pure
+        returns (uint256 id, bool boolean, address token, uint256 amount)
+    {
+        assembly ("memory-safe") {
+            if lt(params.length, 0x80) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
+            id := calldataload(params.offset)
+            boolean := calldataload(add(params.offset, 0x20))
+            token := calldataload(add(params.offset, 0x40))
+            amount := calldataload(add(params.offset, 0x60))
         }
     }
 
     function decodeWithdraw(bytes calldata params)
         internal
         pure
-        returns (address recipient, address token, uint256 amount)
+        returns (uint256 id, address recipient, address token, uint256 amount)
+    {
+        assembly ("memory-safe") {
+            if lt(params.length, 0x80) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
+            id := calldataload(params.offset)
+            recipient := calldataload(add(params.offset, 0x20))
+            token := calldataload(add(params.offset, 0x40))
+            amount := calldataload(add(params.offset, 0x60))
+        }
+    }
+
+    function decodeIncreaseDebt(bytes calldata params)
+        internal
+        pure
+        returns (uint256 id, address recipient, uint256 amount)
     {
         assembly ("memory-safe") {
             if lt(params.length, 0x60) {
                 mstore(0, SLICE_ERROR_SELECTOR)
                 revert(0x1c, 4)
             }
-            recipient := calldataload(params.offset)
-            token := calldataload(add(params.offset, 0x20))
+            id := calldataload(params.offset)
+            recipient := calldataload(add(params.offset, 0x20))
             amount := calldataload(add(params.offset, 0x40))
-        }
-    }
-
-    function decodeIncreaseDebt(bytes calldata params) internal pure returns (address recipient, uint256 amount) {
-        assembly ("memory-safe") {
-            if lt(params.length, 0x40) {
-                mstore(0, SLICE_ERROR_SELECTOR)
-                revert(0x1c, 4)
-            }
-            recipient := calldataload(params.offset)
-            amount := calldataload(add(params.offset, 0x20))
         }
     }
 
     function decodeDecreaseDebt(bytes calldata params)
         internal
         pure
-        returns (bool boolean, uint256 amount, bool useBalance)
+        returns (uint256 id, bool boolean, uint256 amount, bool useBalance)
     {
         assembly ("memory-safe") {
-            if lt(params.length, 0x60) {
+            if lt(params.length, 0x80) {
                 mstore(0, SLICE_ERROR_SELECTOR)
                 revert(0x1c, 4)
             }
-            boolean := calldataload(params.offset)
-            amount := calldataload(add(params.offset, 0x20))
-            useBalance := calldataload(add(params.offset, 0x40))
+            id := calldataload(params.offset)
+            boolean := calldataload(add(params.offset, 0x20))
+            amount := calldataload(add(params.offset, 0x40))
+            useBalance := calldataload(add(params.offset, 0x60))
         }
     }
 
