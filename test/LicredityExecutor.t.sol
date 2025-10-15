@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {LicredityAccount} from "src/LicredityAccount.sol";
+import {LicredityExecutor} from "src/LicredityExecutor.sol";
 import {Actions} from "src/types/Actions.sol";
 import {ActionConstants} from "src/libraries/ActionConstants.sol";
 import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
@@ -21,7 +21,7 @@ import {BaseERC20Mock} from "@licredity-v1-core/test/BaseERC20Mock.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 
 contract LicredityAccountExecuteTest is PeripheryDeployers {
-    LicredityAccount account;
+    LicredityExecutor executor;
 
     BaseERC20Mock testToken;
 
@@ -52,7 +52,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
             Currency.wrap(address(0)), Currency.wrap(address(licredity)), FEE, TICK_SPACING, IHooks(address(licredity))
         );
 
-        account = new LicredityAccount(poolManager, uniswapV4PositionManager, permit2);
+        executor = new LicredityExecutor(poolManager, uniswapV4PositionManager, permit2);
 
         _deadline = block.timestamp + 1;
     }
@@ -66,12 +66,12 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         vm.expectEmit(true, true, false, true);
         emit ILicredity.DepositFungible(1, Fungible.wrap(address(0)), 5 ether);
 
-        licredity.unlock{value: 5 ether}(address(account), planner.encode(_deadline));
+        licredity.unlock{value: 5 ether}(address(executor), planner.encode(_deadline));
     }
 
     function test_licredityAccount_depositNonFungible() public {
         nonFungibleMock.mint(address(this), 1);
-        nonFungibleMock.approve(address(account), 1);
+        nonFungibleMock.approve(address(executor), 1);
 
         uint256 positionId = licredity.openPosition();
         AccountPlan memory planner = AccountPlanner.init();
@@ -80,7 +80,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         vm.expectEmit(true, true, false, false);
         emit ILicredity.DepositNonFungible(1, NonFungibleLibrary.from(address(nonFungibleMock), 1));
 
-        licredity.unlock(address(account), planner.encode(_deadline));
+        licredity.unlock(address(executor), planner.encode(_deadline));
     }
 
     function test_licredityAccount_withdrawFungible(uint256 amount) public {
@@ -93,14 +93,14 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), amount));
         planner.add(Actions.WITHDRAW_FUNGIBLE, abi.encode(positionId, address(0xb0b), address(0), amount));
 
-        licredity.unlock{value: amount}(address(account), planner.encode(_deadline));
+        licredity.unlock{value: amount}(address(executor), planner.encode(_deadline));
 
         assertEq(address(0xb0b).balance, amount);
     }
 
     function test_licredityAccount_withdrawNonFungible() public {
         nonFungibleMock.mint(address(this), 1);
-        nonFungibleMock.approve(address(account), 1);
+        nonFungibleMock.approve(address(executor), 1);
 
         uint256 positionId = licredity.openPosition();
         AccountPlan memory planner = AccountPlanner.init();
@@ -108,7 +108,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.DEPOSIT_NON_FUNGIBLE, abi.encode(positionId, true, address(nonFungibleMock), 1));
         planner.add(Actions.WITHDRAW_NON_FUNGIBLE, abi.encode(positionId, address(0xb0b), address(nonFungibleMock), 1));
 
-        licredity.unlock(address(account), planner.encode(_deadline));
+        licredity.unlock(address(executor), planner.encode(_deadline));
 
         assertEq(nonFungibleMock.ownerOf(1), address(0xb0b));
     }
@@ -122,7 +122,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, amount));
         planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(positionId, amount, false));
 
-        licredity.unlock(address(account), planner.encode(_deadline));
+        licredity.unlock(address(executor), planner.encode(_deadline));
     }
 
     function _getPosition(uint256 depositEthAmount, uint256 borrowEthAmount) internal returns (uint256 positionId) {
@@ -133,7 +133,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), depositEthAmount));
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, borrowEthAmount));
 
-        licredity.unlock{value: depositEthAmount}(address(account), planner.encode(_deadline));
+        licredity.unlock{value: depositEthAmount}(address(executor), planner.encode(_deadline));
     }
 
     function test_licredityAccount_seize() public {
@@ -145,13 +145,13 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.SEIZE, abi.encode(seizedPosition, ActionConstants.MSG_SENDER));
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(seizedPosition, true, address(0), 1.5 ether));
 
-        licredity.unlock{value: 10 ether}(address(account), planner.encode(_deadline));
+        licredity.unlock{value: 10 ether}(address(executor), planner.encode(_deadline));
     }
 
     function test_licredityAccount_initializeLiquidity() public {
         uint256 positionId = licredity.openPosition();
 
-        account.updateTokenPermit2(address(licredity), uniswapV4PositionManager, type(uint160).max, type(uint48).max);
+        executor.updateTokenPermit2(address(licredity), uniswapV4PositionManager, type(uint160).max, type(uint48).max);
 
         PositionPlan memory positionPlan = PositionPlanner.init();
         positionPlan.add(
@@ -176,7 +176,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.ADDRESS_THIS, 1 ether));
         planner.add(Actions.UNISWAP_V4_POSITION_MANAGER_CALL, abi.encode(1 ether, positionManagerCalldata));
         planner.add(Actions.DEPOSIT_NON_FUNGIBLE, abi.encode(positionId, false, uniswapV4PositionManager, 1));
-        licredity.unlock{value: 2.1 ether}(address(account), planner.encode(_deadline));
+        licredity.unlock{value: 2.1 ether}(address(executor), planner.encode(_deadline));
     }
 
     function test_licredityAccount_swap() public {
@@ -184,7 +184,9 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
 
         uint256 positionId = licredity.openPosition();
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
-            zeroForOne: false, amountSpecified: int256(-0.2 ether), sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
+            zeroForOne: false,
+            amountSpecified: int256(-0.2 ether),
+            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
         });
         SwapPlan memory swapPlan = SwapPlanner.init();
 
@@ -197,7 +199,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.ADDRESS_THIS, 0.2 ether));
         planner.add(Actions.UNISWAP_V4_POOL_MANAGER_CALL, swapCallData);
 
-        licredity.unlock{value: 0.5 ether}(address(account), planner.encode(_deadline));
+        licredity.unlock{value: 0.5 ether}(address(executor), planner.encode(_deadline));
     }
 
     function swapDebtTokenToBase() internal {
@@ -205,7 +207,9 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         SwapPlan memory swapPlan = SwapPlanner.init();
 
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
-            zeroForOne: false, amountSpecified: int256(0.02 ether), sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
+            zeroForOne: false,
+            amountSpecified: int256(0.02 ether),
+            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(3)
         });
 
         swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));
@@ -218,7 +222,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.UNISWAP_V4_POOL_MANAGER_CALL, swapPlan.encode());
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, false, address(0), ActionConstants.OPEN_DELTA));
 
-        licredity.unlock{value: 0.5 ether}(address(account), planner.encode(_deadline));
+        licredity.unlock{value: 0.5 ether}(address(executor), planner.encode(_deadline));
     }
 
     function test_licredityAccount_swapDebtTokenToBase() public {
@@ -234,7 +238,9 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         SwapPlan memory swapPlan = SwapPlanner.init();
 
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
-            zeroForOne: true, amountSpecified: int256(-0.02 ether), sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-3)
+            zeroForOne: true,
+            amountSpecified: int256(-0.02 ether),
+            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-3)
         });
 
         swapPlan.add(Actions.UNISWAP_V4_SWAP, abi.encode(poolKey, swapParam, bytes("")));
@@ -246,7 +252,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, 0.02 ether));
         planner.add(Actions.UNISWAP_V4_POOL_MANAGER_CALL, swapPlan.encode());
         planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(positionId, 0.02 ether, false));
-        licredity.unlock{value: 0.5 ether}(address(account), planner.encode(_deadline));
+        licredity.unlock{value: 0.5 ether}(address(executor), planner.encode(_deadline));
 
         licredity.closePosition(positionId);
     }

@@ -16,16 +16,12 @@ import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
-contract LicredityAccount is ILicredityExecutor, UniswapV4Router, LicredityRouter, PositionManagerConfig {
+contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRouter, PositionManagerConfig {
     using CalldataDecoder for bytes;
 
     address transient msgSender;
 
-    constructor(
-        IPoolManager _uniswapV4poolManager,
-        address _uniswapV4PostionManager,
-        IAllowanceTransfer _permit2
-    )
+    constructor(IPoolManager _uniswapV4poolManager, address _uniswapV4PostionManager, IAllowanceTransfer _permit2)
         UniswapV4Router(_uniswapV4poolManager, _uniswapV4PostionManager)
         PositionManagerConfig(_permit2)
         LicredityRouter()
@@ -43,12 +39,12 @@ contract LicredityAccount is ILicredityExecutor, UniswapV4Router, LicredityRoute
             revert DeadlinePassed(deadline);
         }
     }
-    
-    function execute(address sender, bytes calldata data) external isNotLocked(sender) payable returns (bytes memory) {
+
+    function execute(address sender, bytes calldata data) external payable isNotLocked(sender) returns (bytes memory) {
         uint256 deadline = data.decodeOffset(0x00);
         (bytes calldata actions, bytes[] calldata params) = data.decodeActionsRouterParams(0x20);
         checkDeadline(deadline);
-        
+
         uint256 numActions = actions.length;
         require(numActions == params.length, InputLengthMismatch());
 
