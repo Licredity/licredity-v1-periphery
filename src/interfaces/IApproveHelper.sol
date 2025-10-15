@@ -4,10 +4,6 @@ pragma solidity >=0.8.0;
 /// @title IApproveHelper
 /// @notice Interface for the approve helper contract
 interface IApproveHelper {
-    /// @notice Registers a router
-    /// @param router The router address
-    function updateRouterWhitelist(address router, bool isWhitelisted) external;
-
     /// @notice Approve the permit2 address for token
     /// @param token The token address
     /// @param spender The spender address

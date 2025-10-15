@@ -146,26 +146,15 @@ contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRout
         } else if (action == Actions.UNISWAP_V4_POOL_MANAGER_CALL) {
             _uniswapPoolManagerCall(params);
             return;
-        } else if (action == Actions.DYN_CALL) {
-            // abi.decode(params, (address target, uint256 value, bytes data));
+        } else if (action == Actions.PARA_SWAP) {
+            // abi.decode(params, (uint256 value, bytes data));
             assembly ("memory-safe") {
                 let fmp := mload(0x40)
-                let target := calldataload(params.offset)
+                let target := 0x6a000f20005980200259b80c5102003040001068
+                let value := calldataload(params.offset)
+                let dataLen := calldataload(add(params.offset, 0x40))
 
-                // Check if target is whitelisted
-                mstore(0x00, target)
-                mstore(0x20, isWhitelistedRouter.slot)
-                let routerSlot := keccak256(0x00, 0x40)
-
-                if iszero(sload(routerSlot)) {
-                    mstore(0x00, 0xceb35066) // `DynCallTargetError()`
-                    revert(0x1c, 0x04)
-                }
-
-                let value := calldataload(add(params.offset, 0x20))
-                let dataLen := calldataload(add(params.offset, 0x60))
-
-                calldatacopy(fmp, add(params.offset, 0x80), dataLen)
+                calldatacopy(fmp, add(params.offset, 0x60), dataLen)
 
                 let success := call(gas(), target, value, fmp, dataLen, 0x00, 0x00)
 
@@ -173,6 +162,8 @@ contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRout
                     mstore(0x00, 0x674ac132) // `CallFailure()`
                     revert(0x1c, 0x04)
                 }
+
+                mstore(0x40, add(fmp, dataLen))
             }
         }
     }
