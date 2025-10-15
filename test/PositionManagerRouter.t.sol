@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {LicredityExecutor} from "src/LicredityExecutor.sol";
 import {Actions} from "src/types/Actions.sol";
 import {ActionConstants} from "src/libraries/ActionConstants.sol";
-import {AccountPlan, AccountPlanner} from "./shared/AccountPlanner.sol";
+import {ExecutePlan, ExecutePlanner} from "./shared/ExecutePlanner.sol";
 import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
@@ -76,8 +76,7 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
         bytes memory swapCalldata = _getParaSwapCalldata("native");
 
         assertEq(IERC20(address(USDC)).balanceOf(address(executor)), 0);
-        // TODO: Rename AccountPlan to ExecutorPlan
-        AccountPlan memory planner = AccountPlanner.init();
+        ExecutePlan memory planner = ExecutePlanner.init();
         planner.add(Actions.PARA_SWAP, abi.encodePacked(abi.encode(5 ether), swapCalldata));
 
         licredity.unlock{value: 5 ether}(address(executor), planner.encode(_deadline));
@@ -93,7 +92,7 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
         bytes memory swapCalldata = _getParaSwapCalldata("token");
 
         uint256 positionId = licredity.openPosition();
-        AccountPlan memory planner = AccountPlanner.init();
+        ExecutePlan memory planner = ExecutePlanner.init();
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(USDC), 5000e6));
         planner.add(
             Actions.WITHDRAW_FUNGIBLE, abi.encode(positionId, ActionConstants.ADDRESS_THIS, address(USDC), 5000e6)
@@ -180,7 +179,7 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
 
     //         bytes memory swapCalldata = _getParaSwapCalldata("token");
 
-    //         AccountPlan memory planner = AccountPlanner.init();
+    //         ExecutePlan memory planner = ExecutePlanner.init();
     //         planner.add(Actions.DYN_CALL, abi.encodePacked(abi.encode(PARASWAP, 0), swapCalldata));
 
     //         account.execute(licredity, planner.encode());
