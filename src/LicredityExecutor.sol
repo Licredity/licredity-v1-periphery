@@ -3,7 +3,8 @@ pragma solidity =0.8.30;
 
 import {UniswapV4Router} from "./base/UniswapV4Router.sol";
 import {LicredityRouter} from "./base/LicredityRouter.sol";
-import {PositionManagerConfig} from "./PositionManagerConfig.sol";
+import {Multicall_v4} from "./base/Multicall_v4.sol";
+import {ApproveHelper} from "./ApproveHelper.sol";
 import {Actions} from "./types/Actions.sol";
 import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
 import {ActionConstants} from "./libraries/ActionConstants.sol";
@@ -16,14 +17,14 @@ import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
-contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRouter, PositionManagerConfig {
+contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRouter, ApproveHelper, Multicall_v4 {
     using CalldataDecoder for bytes;
 
     address transient msgSender;
 
     constructor(IPoolManager _uniswapV4poolManager, address _uniswapV4PostionManager, IAllowanceTransfer _permit2)
         UniswapV4Router(_uniswapV4poolManager, _uniswapV4PostionManager)
-        PositionManagerConfig(_permit2)
+        ApproveHelper(_permit2)
         LicredityRouter()
     {}
 

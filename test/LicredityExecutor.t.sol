@@ -9,6 +9,7 @@ import {AccountPlan, AccountPlanner} from "./shared/AccountPlanner.sol";
 import {SwapPlanner, SwapPlan} from "./shared/SwapPlanner.sol";
 import {UniswapV4Actions} from "./shared/UniswapV4Actions.sol";
 import {PositionPlanner, PositionPlan} from "./shared/PositionPlanner.sol";
+import {IApproveHelper} from "src/interfaces/IApproveHelper.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {NonFungibleLibrary} from "@licredity-v1-core/types/NonFungible.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
@@ -151,7 +152,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
     function test_licredityAccount_initializeLiquidity() public {
         uint256 positionId = licredity.openPosition();
 
-        executor.updateTokenPermit2(address(licredity), uniswapV4PositionManager, type(uint160).max, type(uint48).max);
+        executor.approvePermit2(address(licredity), uniswapV4PositionManager, type(uint160).max, type(uint48).max);
 
         PositionPlan memory positionPlan = PositionPlanner.init();
         positionPlan.add(
@@ -255,6 +256,13 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         licredity.unlock{value: 0.5 ether}(address(executor), planner.encode(_deadline));
 
         licredity.closePosition(positionId);
+    }
+
+    function test_licredityAccount_multicall() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(IApproveHelper.approve.selector, address(licredity), uniswapV4PositionManager, type(uint256).max);
+        calls[1] = abi.encodeWithSelector(IApproveHelper.approvePermit2.selector, address(licredity), uniswapV4PositionManager, type(uint160).max, type(uint48).max);
+        executor.multicall(calls);
     }
 
     receive() external payable {}

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity =0.8.30;
 
-import {IPositionManagerConfig} from "./interfaces/IPositionManagerConfig.sol";
+import {IApproveHelper} from "./interfaces/IApproveHelper.sol";
 import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
-contract PositionManagerConfig is IPositionManagerConfig {
+contract ApproveHelper is IApproveHelper {
     IAllowanceTransfer immutable PERMIT2;
 
     mapping(address router => bool) internal isWhitelistedRouter;
@@ -15,12 +15,12 @@ contract PositionManagerConfig is IPositionManagerConfig {
         PERMIT2 = _permit2;
     }
 
-    function updateTokenPermit2(address token, address spender, uint160 amount, uint48 expiration) external {
+    function approvePermit2(address token, address spender, uint160 amount, uint48 expiration) external {
         IERC20(token).approve(address(PERMIT2), amount);
         PERMIT2.approve(token, spender, amount, expiration);
     }
 
-    function updateTokenApporve(address token, address spender, uint256 amount) external {
+    function approve(address token, address spender, uint256 amount) external {
         IERC20(token).approve(spender, amount);
     }
 

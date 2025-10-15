@@ -2,10 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {ActionsData} from "../types/Actions.sol";
-import {IPositionManagerConfig} from "./IPositionManagerConfig.sol";
+import {IApproveHelper} from "./IApproveHelper.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 
-interface IPositionManager is IPositionManagerConfig {
+interface IPositionManager is IApproveHelper {
     error ContractLocked();
     error DeadlinePassed(uint256 deadline);
     error MarketNotWhitelisted();
