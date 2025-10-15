@@ -3,7 +3,6 @@ pragma solidity =0.8.30;
 
 import {IApproveHelper} from "./interfaces/IApproveHelper.sol";
 import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
-import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
 contract ApproveHelper is IApproveHelper {

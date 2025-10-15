@@ -2,8 +2,8 @@
 pragma solidity ^0.8.20;
 
 import {UniswapV4Router} from "src/base/UniswapV4Router.sol";
+import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
-import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 
 contract MockUniswapV4Router is UniswapV4Router {
     constructor(address _uniswapV4Mock) UniswapV4Router(IPoolManager(_uniswapV4Mock), _uniswapV4Mock) {}
@@ -20,5 +20,5 @@ contract MockUniswapV4Router is UniswapV4Router {
         _swap(swapCalldata);
     }
 
-    function _pay(Currency token, address payer, address recipient, uint256 amount) internal override {}
+    function _pay(Fungible token, address payer, address recipient, uint256 amount) internal override {}
 }

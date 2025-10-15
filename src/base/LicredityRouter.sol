@@ -7,7 +7,6 @@ import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {NonFungible, NonFungibleLibrary} from "@licredity-v1-core/types/NonFungible.sol";
 import {FullMath} from "@licredity-v1-core/libraries/FullMath.sol";
 import {PositionStateView} from "@licredity-v1-core/libraries/PositionStateView.sol";
-import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IERC721} from "@forge-std/interfaces/IERC721.sol";
 
 abstract contract LicredityRouter {
@@ -25,7 +24,7 @@ abstract contract LicredityRouter {
             licredity.depositFungible{value: amount}(positionId);
         } else {
             licredity.stageFungible(Fungible.wrap(token));
-            _pay(Currency.wrap(token), payer, address(licredity), amount);
+            _pay(Fungible.wrap(token), payer, address(licredity), amount);
             licredity.depositFungible(positionId);
         }
     }
@@ -121,7 +120,7 @@ abstract contract LicredityRouter {
             licredity.exchangeFungible{value: amount}(recipient, true);
         } else {
             licredity.stageFungible(baseFungible);
-            _pay(Currency.wrap(Fungible.unwrap(baseFungible)), payer, address(licredity), amount);
+            _pay(baseFungible, payer, address(licredity), amount);
             licredity.exchangeFungible(recipient, true);
         }
     }
@@ -132,5 +131,5 @@ abstract contract LicredityRouter {
     /// @param recipient The address who should receive tokens
     /// @param amount The number of tokens to send
 
-    function _pay(Currency token, address payer, address recipient, uint256 amount) internal virtual;
+    function _pay(Fungible token, address payer, address recipient, uint256 amount) internal virtual;
 }

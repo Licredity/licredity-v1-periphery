@@ -260,8 +260,16 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
 
     function test_licredityAccount_multicall() public {
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeWithSelector(IApproveHelper.approve.selector, address(licredity), uniswapV4PositionManager, type(uint256).max);
-        calls[1] = abi.encodeWithSelector(IApproveHelper.approvePermit2.selector, address(licredity), uniswapV4PositionManager, type(uint160).max, type(uint48).max);
+        calls[0] = abi.encodeWithSelector(
+            IApproveHelper.approve.selector, address(licredity), uniswapV4PositionManager, type(uint256).max
+        );
+        calls[1] = abi.encodeWithSelector(
+            IApproveHelper.approvePermit2.selector,
+            address(licredity),
+            uniswapV4PositionManager,
+            type(uint160).max,
+            type(uint48).max
+        );
         executor.multicall(calls);
     }
 

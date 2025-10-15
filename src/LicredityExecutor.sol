@@ -11,11 +11,10 @@ import {ActionConstants} from "./libraries/ActionConstants.sol";
 import {ILicredityExecutor} from "./interfaces/ILicredityAccount.sol";
 import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
 import {IUniswapV4PositionManager} from "./interfaces/external/IUniswapV4PositionManager.sol";
-import {NonFungible} from "@licredity-v1-core/types/NonFungible.sol";
-import {Currency} from "@uniswap-v4-core/types/Currency.sol";
+import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
+import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
-import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
 contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRouter, ApproveHelper, Multicall_v4 {
     using CalldataDecoder for bytes;
@@ -25,7 +24,6 @@ contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRout
     constructor(IPoolManager _uniswapV4poolManager, address _uniswapV4PostionManager, IAllowanceTransfer _permit2)
         UniswapV4Router(_uniswapV4poolManager, _uniswapV4PostionManager)
         ApproveHelper(_permit2)
-        LicredityRouter()
     {}
 
     modifier isNotLocked(address sender) {
@@ -204,14 +202,14 @@ contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRout
         return payerIsUser ? msgSender : address(this);
     }
 
-    function _pay(Currency currency, address payer, address recipient, uint256 amount)
+    function _pay(Fungible fungible, address payer, address recipient, uint256 amount)
         internal
         override(LicredityRouter, UniswapV4Router)
     {
         if (payer == address(this)) {
-            currency.transfer(recipient, amount);
+            fungible.transfer(recipient, amount);
         } else {
-            IERC20(Currency.unwrap(currency)).transferFrom(payer, recipient, amount);
+            fungible.transferFrom(payer, recipient, amount);
         }
     }
 

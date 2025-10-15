@@ -34,6 +34,7 @@ abstract contract ERC721 {
     string public symbol;
 
     // TODO: May be not implemented
+    // forge-lint: disable-next-line(mixed-case-function)
     function tokenURI(uint256 id) public view virtual returns (string memory);
 
     /*//////////////////////////////////////////////////////////////
@@ -234,6 +235,7 @@ abstract contract ERC721 {
 /// @notice A generic interface for a contract which properly accepts ERC721 tokens.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol)
 abstract contract ERC721TokenReceiver {
+    // forge-lint: disable-next-line(mixed-case-function)
     function onERC721Received(address, address, uint256, bytes calldata) external virtual returns (bytes4) {
         return ERC721TokenReceiver.onERC721Received.selector;
     }
