@@ -16,11 +16,7 @@ library CalldataDecoder {
     /// @notice equivalent to SliceOutOfBounds.selector, stored in least-significant bits
     uint256 constant SLICE_ERROR_SELECTOR = 0x3b99b53d;
 
-    function decodeOffset(bytes calldata _bytes, uint256 position)
-        internal
-        pure
-        returns (uint256 offset)
-    {
+    function decodeOffset(bytes calldata _bytes, uint256 position) internal pure returns (uint256 offset) {
         assembly ("memory-safe") {
             if lt(_bytes.length, add(position, 0x20)) {
                 mstore(0, SLICE_ERROR_SELECTOR)
@@ -29,7 +25,7 @@ library CalldataDecoder {
             offset := calldataload(add(_bytes.offset, position))
         }
     }
-    
+
     /// @dev equivalent to: abi.decode(params, (bytes, bytes[])) in calldata (requires strict abi encoding)
     function decodeActionsRouterParams(bytes calldata _bytes, uint256 offsets)
         internal
@@ -44,14 +40,15 @@ library CalldataDecoder {
             // dataOffset + 0x20: offsets + 0x60 + actions.length (offset to `params.length`)
             // dataOffset + 0x40: `actions.length`
             // dataOffset + 0x60: beginning of actions
-            
+
             // Verify actions offset matches strict encoding
             let invalidData := xor(calldataload(dataOffset), add(offsets, 0x40))
             actions.offset := add(dataOffset, 0x60)
             actions.length := and(calldataload(add(dataOffset, 0x40)), OFFSET_OR_LENGTH_MASK)
 
             // Round actions length up to be word-aligned, and add 0x60 (for the first 3 words of encoding)
-            let paramsLengthOffset := add(and(add(actions.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN), add(0x60, offsets))
+            let paramsLengthOffset :=
+                add(and(add(actions.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN), add(0x60, offsets))
             // Verify params offset matches strict encoding
             invalidData := or(invalidData, xor(calldataload(add(dataOffset, 0x20)), paramsLengthOffset))
             let paramsLengthPointer := add(_bytes.offset, paramsLengthOffset) // _bytes.offset + offset + 0x60 + actions length

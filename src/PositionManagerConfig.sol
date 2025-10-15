@@ -15,9 +15,7 @@ contract PositionManagerConfig is IPositionManagerConfig {
         PERMIT2 = _permit2;
     }
 
-    function updateTokenPermit2(address token, address spender, uint160 amount, uint48 expiration)
-        external
-    {
+    function updateTokenPermit2(address token, address spender, uint160 amount, uint48 expiration) external {
         IERC20(token).approve(address(PERMIT2), amount);
         PERMIT2.approve(token, spender, amount, expiration);
     }

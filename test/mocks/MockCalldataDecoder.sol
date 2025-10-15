@@ -10,7 +10,7 @@ contract MockCalldataDecoder {
     function decodeOffset(bytes calldata _bytes, uint256 position) external pure returns (uint256 offset) {
         return CalldataDecoder.decodeOffset(_bytes, position);
     }
-    
+
     function decodeActionsRouterParams(uint256 offset, bytes calldata _bytes)
         external
         pure

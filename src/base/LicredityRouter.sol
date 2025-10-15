@@ -79,12 +79,7 @@ abstract contract LicredityRouter {
         licredity.increaseDebtShare(positionId, delta, recipient);
     }
 
-    function _decreaseDebtAmount(
-        ILicredity licredity,
-        uint256 positionId,
-        uint256 amount,
-        bool useBalance
-    ) internal {
+    function _decreaseDebtAmount(ILicredity licredity, uint256 positionId, uint256 amount, bool useBalance) internal {
         uint256 totalShares = licredity.totalDebtShare();
         uint256 totalAssets = licredity.totalDebtBalance();
 
@@ -103,9 +98,7 @@ abstract contract LicredityRouter {
         }
     }
 
-    function _decreaseDebtShare(ILicredity licredity, uint256 positionId, uint256 delta, bool useBalance)
-        internal
-    {
+    function _decreaseDebtShare(ILicredity licredity, uint256 positionId, uint256 delta, bool useBalance) internal {
         if (delta == ActionConstants.OPEN_DELTA) {
             delta = licredity.getPositionDebtShare(positionId);
         }
