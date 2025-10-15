@@ -18,6 +18,9 @@ forge-std = "1.9.7"
 uniswap-v4-core = "4"
 licredity-v1-core = { version = "1.0.0", git = "git@github.com:Licredity/licredity-v1-core.git", rev = "109dedb30077ed73e472b7b25b7af039b1b8113d" }
 
+[lint]
+exclude_lints = ["erc20-unchecked-transfer"]
+
 [rpc_endpoints]
 ETH = "${ETH_RPC_URL}"
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
