@@ -54,13 +54,13 @@ contract MockCalldataDecoder {
     function decodeDecreaseDebt(bytes calldata params)
         external
         pure
-        returns (uint256 id, bool boolean, uint256 amount, bool useBalance)
+        returns (uint256 id, uint256 amount, bool useBalance)
     {
         return CalldataDecoder.decodeDecreaseDebt(params);
     }
 
-    function decodePositionId(bytes calldata params) external pure returns (uint256 tokenId) {
-        return CalldataDecoder.decodePositionId(params);
+    function decodeSeizedPosition(bytes calldata params) external pure returns (uint256 tokenId, address recipient) {
+        return CalldataDecoder.decodeSeizedPosition(params);
     }
 
     function decodeCurrencyAddressAndUint256(bytes calldata params)

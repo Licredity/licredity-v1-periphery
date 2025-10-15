@@ -175,27 +175,27 @@ library CalldataDecoder {
     function decodeDecreaseDebt(bytes calldata params)
         internal
         pure
-        returns (uint256 id, bool boolean, uint256 amount, bool useBalance)
+        returns (uint256 id, uint256 amount, bool useBalance)
     {
         assembly ("memory-safe") {
-            if lt(params.length, 0x80) {
+            if lt(params.length, 0x60) {
                 mstore(0, SLICE_ERROR_SELECTOR)
                 revert(0x1c, 4)
             }
             id := calldataload(params.offset)
-            boolean := calldataload(add(params.offset, 0x20))
-            amount := calldataload(add(params.offset, 0x40))
-            useBalance := calldataload(add(params.offset, 0x60))
+            amount := calldataload(add(params.offset, 0x20))
+            useBalance := calldataload(add(params.offset, 0x40))
         }
     }
 
-    function decodePositionId(bytes calldata params) internal pure returns (uint256 tokenId) {
+    function decodeSeizedPosition(bytes calldata params) internal pure returns (uint256 tokenId, address recipient) {
         assembly ("memory-safe") {
-            if lt(params.length, 0x20) {
+            if lt(params.length, 0x40) {
                 mstore(0, SLICE_ERROR_SELECTOR)
                 revert(0x1c, 4)
             }
             tokenId := calldataload(params.offset)
+            recipient := calldataload(add(params.offset, 0x20))
         }
     }
 

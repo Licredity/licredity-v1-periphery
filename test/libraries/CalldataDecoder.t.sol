@@ -198,15 +198,14 @@ contract CalldataDecoderTest is Test {
         decoder.decodeIncreaseDebt(invalidParams);
     }
 
-    function test_fuzz_decodeDecreaseDebt(uint256 _id, bool _boolean, uint256 _amount, bool _useBalance)
+    function test_fuzz_decodeDecreaseDebt(uint256 _id, uint256 _amount, bool _useBalance)
         external
         view
     {
-        bytes memory params = abi.encode(_id, _boolean, _amount, _useBalance);
-        (uint256 id, bool boolean, uint256 amount, bool useBalance) = decoder.decodeDecreaseDebt(params);
+        bytes memory params = abi.encode(_id, _amount, _useBalance);
+        (uint256 id, uint256 amount, bool useBalance) = decoder.decodeDecreaseDebt(params);
 
         assertEq(id, _id);
-        assertEq(boolean, _boolean);
         assertEq(amount, _amount);
         assertEq(useBalance, _useBalance);
     }
@@ -224,22 +223,24 @@ contract CalldataDecoderTest is Test {
         decoder.decodeDecreaseDebt(invalidParams);
     }
 
-    function test_fuzz_decodePositionId(uint256 _tokenId) external view {
-        bytes memory params = abi.encode(_tokenId);
-        uint256 tokenId = decoder.decodePositionId(params);
+    function test_fuzz_decodeSeizedPosition(uint256 _tokenId, address _recipient) external view {
+        bytes memory params = abi.encode(_tokenId, _recipient);
+        (uint256 tokenId, address recipient) = decoder.decodeSeizedPosition(params);
 
         assertEq(tokenId, _tokenId);
+        assertEq(recipient, _recipient);
     }
 
-    function test_decodePositionId_outOfBounds() external {
+    function test_decodeSeizedPosition_outOfBounds() external {
         uint256 tokenId = 1000;
+        address recipient = address(0x1);
 
-        bytes memory params = abi.encode(tokenId);
+        bytes memory params = abi.encode(tokenId, recipient);
         bytes memory invalidParams = _removeFinalByte(params);
 
         assertEq(invalidParams.length, params.length - 1);
         vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
-        decoder.decodePositionId(invalidParams);
+        decoder.decodeSeizedPosition(invalidParams);
     }
 
     function test_fuzz_decodeCurrencyAddressAndUint256(Currency _currency, address _addr, uint256 _amount)
