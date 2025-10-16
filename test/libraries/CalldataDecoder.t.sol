@@ -110,6 +110,26 @@ contract CalldataDecoderTest is Test {
         assertEq(positionParams.length, 0);
     }
 
+    function test_fuzz_decodeAddressAndAddress(address _token, address _spender) external view {
+        bytes memory params = abi.encode(_token, _spender);
+        (address token, address spender) = decoder.decodeAddressAndAddress(params);
+
+        assertEq(token, _token);
+        assertEq(spender, _spender);
+    }
+
+    function test_decodeAddressAndAddress_outOfBounds() external {
+        address token = address(0x1);
+        address spender = address(0x1);
+
+        bytes memory params = abi.encode(token, spender);
+        bytes memory invalidParams = _removeFinalByte(params);
+
+        assertEq(invalidParams.length, params.length - 1);
+        vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
+        decoder.decodeAddressAndAddress(invalidParams);
+    }
+
     function test_fuzz_decodeBoolAddressAndUint256(bool _boolean, address _token, uint256 _amount) external view {
         bytes memory params = abi.encode(_boolean, _token, _amount);
         (bool boolean, address token, uint256 amount) = decoder.decodeBoolAddressAndUint256(params);

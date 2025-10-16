@@ -85,7 +85,6 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
     }
 
     function test_PoolManager_paraswap_token() public {
-        executor.approve(USDC, PARASWAP, type(uint256).max);
         IERC20(USDC).approve(address(executor), type(uint256).max);
         _getUsdc(address(this), 5000e6);
 
@@ -93,6 +92,7 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
 
         uint256 positionId = licredity.openPosition();
         ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.APPROVE, abi.encode(address(USDC), PARASWAP));
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(USDC), 5000e6));
         planner.add(
             Actions.WITHDRAW_FUNGIBLE, abi.encode(positionId, ActionConstants.ADDRESS_THIS, address(USDC), 5000e6)

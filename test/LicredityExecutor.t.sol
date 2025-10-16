@@ -152,7 +152,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
     function test_licredityAccount_initializeLiquidity() public {
         uint256 positionId = licredity.openPosition();
 
-        executor.approvePermit2(address(licredity), uniswapV4PositionManager, type(uint160).max, type(uint48).max);
+        executor.approvePermit2(address(licredity), uniswapV4PositionManager);
 
         PositionPlan memory positionPlan = PositionPlanner.init();
         positionPlan.add(
@@ -257,21 +257,6 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
 
         licredity.closePosition(positionId);
     }
-
-    function test_licredityAccount_multicall() public {
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeWithSelector(
-            IApproveHelper.approve.selector, address(licredity), uniswapV4PositionManager, type(uint256).max
-        );
-        calls[1] = abi.encodeWithSelector(
-            IApproveHelper.approvePermit2.selector,
-            address(licredity),
-            uniswapV4PositionManager,
-            type(uint160).max,
-            type(uint48).max
-        );
-        executor.multicall(calls);
-    }
-
+    
     receive() external payable {}
 }

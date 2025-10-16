@@ -21,5 +21,7 @@ library Actions {
     uint256 public constant UNISWAP_V4_SETTLE = 0x0f;
     uint256 public constant UNISWAP_V4_SWEEP = 0x10;
 
-    uint256 public constant PARA_SWAP = 0x11;
+    uint256 public constant APPROVE = 0x11;
+
+    uint256 public constant PARA_SWAP = 0x12;
 }

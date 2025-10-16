@@ -27,6 +27,10 @@ contract MockCalldataDecoder {
         return CalldataDecoder.decodeBoolAddressAndUint256(params);
     }
 
+    function decodeAddressAndAddress(bytes calldata params) external pure returns (address token, address spender) {
+        return CalldataDecoder.decodeAddressAndAddress(params);
+    }
+
     function decodeBoolUint256AddressAndUint256(bytes calldata params)
         external
         pure

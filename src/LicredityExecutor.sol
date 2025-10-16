@@ -3,7 +3,6 @@ pragma solidity =0.8.30;
 
 import {UniswapV4Router} from "./base/UniswapV4Router.sol";
 import {LicredityRouter} from "./base/LicredityRouter.sol";
-import {Multicall_v4} from "./base/Multicall_v4.sol";
 import {ApproveHelper} from "./ApproveHelper.sol";
 import {Actions} from "./types/Actions.sol";
 import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
@@ -16,7 +15,7 @@ import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 
-contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRouter, ApproveHelper, Multicall_v4 {
+contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRouter, ApproveHelper {
     using CalldataDecoder for bytes;
 
     address transient msgSender;
@@ -145,6 +144,11 @@ contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRout
             return;
         } else if (action == Actions.UNISWAP_V4_POOL_MANAGER_CALL) {
             _uniswapPoolManagerCall(params);
+            return;
+        } else if (action == Actions.APPROVE) {
+            (address token, address spender) = params.decodeAddressAndAddress();
+            approvePermit2(token, spender);
+            approve(token, spender);
             return;
         } else if (action == Actions.PARA_SWAP) {
             // abi.decode(params, (uint256 value, bytes data));

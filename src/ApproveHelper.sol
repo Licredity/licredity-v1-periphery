@@ -12,12 +12,12 @@ contract ApproveHelper is IApproveHelper {
         PERMIT2 = _permit2;
     }
 
-    function approvePermit2(address token, address spender, uint160 amount, uint48 expiration) external {
-        IERC20(token).approve(address(PERMIT2), amount);
-        PERMIT2.approve(token, spender, amount, expiration);
+    function approvePermit2(address token, address spender) public {
+        IERC20(token).approve(address(PERMIT2), type(uint160).max);
+        PERMIT2.approve(token, spender, type(uint160).max, type(uint48).max);
     }
 
-    function approve(address token, address spender, uint256 amount) external {
-        IERC20(token).approve(spender, amount);
+    function approve(address token, address spender) public {
+        IERC20(token).approve(spender, type(uint256).max);
     }
 }

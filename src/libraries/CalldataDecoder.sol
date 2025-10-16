@@ -103,6 +103,17 @@ library CalldataDecoder {
         }
     }
 
+    function decodeAddressAndAddress(bytes calldata params) internal pure returns (address token, address spender) {
+        assembly ("memory-safe") {
+            if lt(params.length, 0x40) {
+                mstore(0, SLICE_ERROR_SELECTOR)
+                revert(0x1c, 4)
+            }
+            token := calldataload(params.offset)
+            spender := calldataload(add(params.offset, 0x20))
+        }
+    }
+
     function decodeBoolAddressAndUint256(bytes calldata params)
         internal
         pure
