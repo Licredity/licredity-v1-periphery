@@ -9,7 +9,6 @@ import {ExecutePlan, ExecutePlanner} from "./shared/ExecutePlanner.sol";
 import {SwapPlanner, SwapPlan} from "./shared/SwapPlanner.sol";
 import {UniswapV4Actions} from "./shared/UniswapV4Actions.sol";
 import {PositionPlanner, PositionPlan} from "./shared/PositionPlanner.sol";
-import {IApproveHelper} from "src/interfaces/IApproveHelper.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {NonFungibleLibrary} from "@licredity-v1-core/types/NonFungible.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
@@ -257,6 +256,6 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
 
         licredity.closePosition(positionId);
     }
-    
+
     receive() external payable {}
 }

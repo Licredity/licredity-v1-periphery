@@ -9,4 +9,5 @@ interface ILicredityExecutor is IUnlockExecutor, IApproveHelper {
     error DeadlinePassed(uint256 deadline);
     error InputLengthMismatch();
     error NotSafeCallback();
+    error UnknownAction(uint256 action);
 }

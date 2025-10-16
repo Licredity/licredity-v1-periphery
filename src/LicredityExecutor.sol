@@ -151,24 +151,36 @@ contract LicredityExecutor is ILicredityExecutor, UniswapV4Router, LicredityRout
             approve(token, spender);
             return;
         } else if (action == Actions.PARA_SWAP) {
-            // abi.decode(params, (uint256 value, bytes data));
-            assembly ("memory-safe") {
-                let fmp := mload(0x40)
-                let target := 0x6a000f20005980200259b80c5102003040001068
-                let value := calldataload(params.offset)
-                let dataLen := calldataload(add(params.offset, 0x40))
+            _callTarget(address(0x6A000F20005980200259B80c5102003040001068), params);
+            return;
+        } else if (action == Actions.ODOS_SWAP) {
+            _callTarget(address(0xCf5540fFFCdC3d510B18bFcA6d2b9987b0772559), params);
+            return;
+        } else if (action == Actions.PENDLE_SWAP) {
+            _callTarget(address(0x888888888889758F76e7103c6CbF23ABbF58F946), params);
+            return;
+        } else {
+            revert UnknownAction(action);
+        }
+    }
 
-                calldatacopy(fmp, add(params.offset, 0x60), dataLen)
+    function _callTarget(address target, bytes calldata params) internal {
+        // abi.decode(params, (uint256 value, bytes data));
+        assembly ("memory-safe") {
+            let fmp := mload(0x40)
+            let value := calldataload(params.offset)
+            let dataLen := calldataload(add(params.offset, 0x40))
 
-                let success := call(gas(), target, value, fmp, dataLen, 0x00, 0x00)
+            calldatacopy(fmp, add(params.offset, 0x60), dataLen)
 
-                if iszero(success) {
-                    mstore(0x00, 0x674ac132) // `CallFailure()`
-                    revert(0x1c, 0x04)
-                }
+            let success := call(gas(), target, value, fmp, dataLen, 0x00, 0x00)
 
-                mstore(0x40, add(fmp, dataLen))
+            if iszero(success) {
+                mstore(0x00, 0x674ac132) // `CallFailure()`
+                revert(0x1c, 0x04)
             }
+
+            mstore(0x40, add(fmp, dataLen))
         }
     }
 

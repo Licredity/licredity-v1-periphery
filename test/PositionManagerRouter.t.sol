@@ -54,17 +54,17 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
         swapCalldata = json.parseRaw(".txParams.data");
     }
 
-    //     function _getPendleSwapCalldata(string memory swapType) internal view returns (bytes memory swapCalldata) {
-    //         string memory path = string.concat("./test/test_data/pendle_", swapType, ".json");
-    //         string memory json = vm.readFile(path);
-    //         swapCalldata = json.parseRaw(".routes[0].tx.data");
-    //     }
+    function _getPendleSwapCalldata(string memory swapType) internal view returns (bytes memory swapCalldata) {
+        string memory path = string.concat("./test/test_data/pendle_", swapType, ".json");
+        string memory json = vm.readFile(path);
+        swapCalldata = json.parseRaw(".routes[0].tx.data");
+    }
 
-    //     function _getOdosSwapCalldata(string memory swapType) internal view returns (bytes memory swapCalldata) {
-    //         string memory path = string.concat("./test/test_data/odos_", swapType, ".json");
-    //         string memory json = vm.readFile(path);
-    //         swapCalldata = json.parseRaw(".transaction.data");
-    //     }
+    function _getOdosSwapCalldata(string memory swapType) internal view returns (bytes memory swapCalldata) {
+        string memory path = string.concat("./test/test_data/odos_", swapType, ".json");
+        string memory json = vm.readFile(path);
+        swapCalldata = json.parseRaw(".transaction.data");
+    }
 
     function _getUsdc(address receiver, uint256 amount) internal {
         vm.startPrank(USDC_SENDER);
@@ -104,86 +104,67 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
         assertGt(address(executor).balance, 0);
     }
 
-    //     function test_PoolManager_Pendle_native() public {
-    //         licredityManager.updateRouterWhitelist(PENDLE, true);
-    //         bytes memory swapCalldata = _getPendleSwapCalldata("native");
+    function test_PoolManager_Pendle_native() public {
+        bytes memory swapCalldata = _getPendleSwapCalldata("native");
 
-    //         uint256 tokenId = licredityManager.mint(licredity);
-    //         Plan memory planner = Planner.init(tokenId);
-    //         planner.add(Actions.DYN_CALL, abi.encodePacked(abi.encode(PENDLE, 5 ether), swapCalldata));
+        ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.PENDLE_SWAP, abi.encodePacked(abi.encode(5 ether), swapCalldata));
 
-    //         ActionsData[] memory calls = planner.finalize();
+        assertEq(IERC20(PT_USDO).balanceOf(SWAP_RECEIVER), 0);
+        licredity.unlock{value: 5 ether}(address(executor), planner.encode(_deadline));
+        assertGt(IERC20(PT_USDO).balanceOf(SWAP_RECEIVER), 0);
+    }
 
-    //         licredityManager.execute{value: 5 ether}(calls, _deadline);
+    function test_PoolManager_Pendle_token() public {
+        IERC20(USDC).approve(address(executor), type(uint256).max);
+        _getUsdc(address(this), 5000e6);
 
-    //         assertGt(IERC20(PT_USDO).balanceOf(SWAP_RECEIVER), 0);
-    //     }
+        uint256 positionId = licredity.openPosition();
+        bytes memory swapCalldata = _getPendleSwapCalldata("token");
+        ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.APPROVE, abi.encode(address(USDC), PENDLE));
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(USDC), 5000e6));
+        planner.add(
+            Actions.WITHDRAW_FUNGIBLE, abi.encode(positionId, ActionConstants.ADDRESS_THIS, address(USDC), 5000e6)
+        );
+        planner.add(Actions.PENDLE_SWAP, abi.encodePacked(abi.encode(0), swapCalldata));
 
-    //     function test_PoolManager_Pendle_token() public {
-    //         licredityManager.updateRouterWhitelist(PENDLE, true);
-    //         licredityManager.updateTokenApporve(USDC, PENDLE, type(uint256).max);
-    //         _getUsdc(address(licredityManager), 5000e6);
+        assertEq(IERC20(PT_USDO).balanceOf(SWAP_RECEIVER), 0);
+        licredity.unlock(address(executor), planner.encode(_deadline));
+        assertGt(IERC20(PT_USDO).balanceOf(SWAP_RECEIVER), 0);
+    }
 
-    //         bytes memory swapCalldata = _getPendleSwapCalldata("token");
+    function test_PoolManager_Odos_native() public {
+        bytes memory swapCalldata = _getOdosSwapCalldata("native");
 
-    //         uint256 tokenId = licredityManager.mint(licredity);
-    //         Plan memory planner = Planner.init(tokenId);
-    //         planner.add(Actions.DYN_CALL, abi.encodePacked(abi.encode(PENDLE, 0), swapCalldata));
+        assertEq(IERC20(address(USDC)).balanceOf(address(executor)), 0);
 
-    //         ActionsData[] memory calls = planner.finalize();
+        ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.ODOS_SWAP, abi.encodePacked(abi.encode(5 ether), swapCalldata));
 
-    //         licredityManager.execute(calls, _deadline);
+        licredity.unlock{value: 5 ether}(address(executor), planner.encode(_deadline));
 
-    //         assertGt(IERC20(PT_USDO).balanceOf(SWAP_RECEIVER), 0);
-    //     }
+        assertGt(IERC20(address(USDC)).balanceOf(SWAP_RECEIVER), 0);
+    }
 
-    //     function test_PoolManager_Odos_native() public {
-    //         licredityManager.updateRouterWhitelist(ODOS, true);
-    //         bytes memory swapCalldata = _getOdosSwapCalldata("native");
+    function test_PoolManager_Odos_token() public {
+        IERC20(USDC).approve(address(executor), type(uint256).max);
+        _getUsdc(address(this), 5000e6);
 
-    //         uint256 tokenId = licredityManager.mint(licredity);
-    //         Plan memory planner = Planner.init(tokenId);
-    //         planner.add(Actions.DYN_CALL, abi.encodePacked(abi.encode(ODOS, 5 ether), swapCalldata));
+        uint256 positionId = licredity.openPosition();
 
-    //         ActionsData[] memory calls = planner.finalize();
+        bytes memory swapCalldata = _getOdosSwapCalldata("token");
 
-    //         licredityManager.execute{value: 5 ether}(calls, _deadline);
+        ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.APPROVE, abi.encode(address(USDC), ODOS));
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(USDC), 5000e6));
+        planner.add(
+            Actions.WITHDRAW_FUNGIBLE, abi.encode(positionId, ActionConstants.ADDRESS_THIS, address(USDC), 5000e6)
+        );
+        planner.add(Actions.ODOS_SWAP, abi.encodePacked(abi.encode(0), swapCalldata));
 
-    //         assertGt(IERC20(address(USDC)).balanceOf(SWAP_RECEIVER), 0);
-    //     }
-
-    //     function test_PoolManager_Odos_token() public {
-    //         licredityManager.updateRouterWhitelist(ODOS, true);
-    //         licredityManager.updateTokenApporve(USDC, ODOS, type(uint256).max);
-    //         _getUsdc(address(licredityManager), 5000e6);
-
-    //         bytes memory swapCalldata = _getOdosSwapCalldata("token");
-
-    //         uint256 tokenId = licredityManager.mint(licredity);
-    //         Plan memory planner = Planner.init(tokenId);
-    //         planner.add(Actions.DYN_CALL, abi.encodePacked(abi.encode(ODOS, 0), swapCalldata));
-
-    //         ActionsData[] memory calls = planner.finalize();
-
-    //         assertEq(SWAP_RECEIVER.balance, 0);
-
-    //         licredityManager.execute(calls, _deadline);
-
-    //         assertGt(SWAP_RECEIVER.balance, 0);
-    //     }
-
-    //     function test_Account_paraswap_token() public {
-    //         account.updateRouterWhitelist(PARASWAP, true);
-    //         account.updateTokenApporve(USDC, PARASWAP, type(uint256).max);
-    //         _getUsdc(address(account), 5000e6);
-
-    //         bytes memory swapCalldata = _getParaSwapCalldata("token");
-
-    //         ExecutePlan memory planner = ExecutePlanner.init();
-    //         planner.add(Actions.DYN_CALL, abi.encodePacked(abi.encode(PARASWAP, 0), swapCalldata));
-
-    //         account.execute(licredity, planner.encode());
-
-    //         assertGt(address(account).balance, 0);
-    //     }
+        assertEq(SWAP_RECEIVER.balance, 0);
+        licredity.unlock(address(executor), planner.encode(_deadline));
+        assertGt(SWAP_RECEIVER.balance, 0);
+    }
 }

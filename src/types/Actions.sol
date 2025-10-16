@@ -24,4 +24,6 @@ library Actions {
     uint256 public constant APPROVE = 0x11;
 
     uint256 public constant PARA_SWAP = 0x12;
+    uint256 public constant ODOS_SWAP = 0x13;
+    uint256 public constant PENDLE_SWAP = 0x14;
 }
