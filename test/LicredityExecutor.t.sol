@@ -20,7 +20,7 @@ import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol
 import {BaseERC20Mock} from "@licredity-v1-core/test/BaseERC20Mock.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 
-contract LicredityAccountExecuteTest is PeripheryDeployers {
+contract licredityExecutorTest is PeripheryDeployers {
     LicredityExecutor executor;
 
     BaseERC20Mock testToken;
@@ -57,7 +57,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         _deadline = block.timestamp + 1;
     }
 
-    function test_licredityAccount_depositFungible() public {
+    function test_licredityExecutor_depositFungible() public {
         uint256 positionId = licredity.openPosition();
         ExecutePlan memory planner = ExecutePlanner.init();
 
@@ -69,7 +69,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         licredity.unlock{value: 5 ether}(address(executor), planner.encode(_deadline));
     }
 
-    function test_licredityAccount_depositNonFungible() public {
+    function test_licredityExecutor_depositNonFungible() public {
         nonFungibleMock.mint(address(this), 1);
         nonFungibleMock.approve(address(executor), 1);
 
@@ -83,7 +83,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         licredity.unlock(address(executor), planner.encode(_deadline));
     }
 
-    function test_licredityAccount_withdrawFungible(uint256 amount) public {
+    function test_licredityExecutor_withdrawFungible(uint256 amount) public {
         amount = bound(amount, 1, 10000 ether - 1);
         deal(address(this), amount);
 
@@ -98,7 +98,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         assertEq(address(0xb0b).balance, amount);
     }
 
-    function test_licredityAccount_withdrawNonFungible() public {
+    function test_licredityExecutor_withdrawNonFungible() public {
         nonFungibleMock.mint(address(this), 1);
         nonFungibleMock.approve(address(executor), 1);
 
@@ -113,7 +113,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         assertEq(nonFungibleMock.ownerOf(1), address(0xb0b));
     }
 
-    function test_licredityAccount_debtAmount(uint256 amount) public {
+    function test_licredityExecutor_debtAmount(uint256 amount) public {
         amount = bound(amount, 1, 10000 ether - 1);
 
         uint256 positionId = licredity.openPosition();
@@ -136,7 +136,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         licredity.unlock{value: depositEthAmount}(address(executor), planner.encode(_deadline));
     }
 
-    function test_licredityAccount_seize() public {
+    function test_licredityExecutor_seize() public {
         uint256 seizedPosition = _getPosition(10 ether, 9.9 ether);
         oracleMock.setFungibleConfig(Fungible.wrap(address(0)), 0.9 ether, 1000); // 1000 / 1_000_000 = 0.1%
 
@@ -148,7 +148,7 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         licredity.unlock{value: 10 ether}(address(executor), planner.encode(_deadline));
     }
 
-    function test_licredityAccount_initializeLiquidity() public {
+    function test_licredityExecutor_initializeLiquidity() public {
         uint256 positionId = licredity.openPosition();
 
         executor.approvePermit2(address(licredity), uniswapV4PositionManager);
@@ -179,8 +179,8 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         licredity.unlock{value: 2.1 ether}(address(executor), planner.encode(_deadline));
     }
 
-    function test_licredityAccount_swap() public {
-        test_licredityAccount_initializeLiquidity();
+    function test_licredityExecutor_swap() public {
+        test_licredityExecutor_initializeLiquidity();
 
         uint256 positionId = licredity.openPosition();
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
@@ -225,13 +225,13 @@ contract LicredityAccountExecuteTest is PeripheryDeployers {
         licredity.unlock{value: 0.5 ether}(address(executor), planner.encode(_deadline));
     }
 
-    function test_licredityAccount_swapDebtTokenToBase() public {
-        test_licredityAccount_initializeLiquidity();
+    function test_licredityExecutor_swapDebtTokenToBase() public {
+        test_licredityExecutor_initializeLiquidity();
         swapDebtTokenToBase();
     }
 
-    function test_licredityAccount_closePosition() public {
-        test_licredityAccount_initializeLiquidity();
+    function test_licredityExecutor_closePosition() public {
+        test_licredityExecutor_initializeLiquidity();
         swapDebtTokenToBase();
 
         uint256 positionId = licredity.openPosition();
