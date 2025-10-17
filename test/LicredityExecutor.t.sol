@@ -162,7 +162,7 @@ contract licredityExecutorTest is PeripheryDeployers {
         licredity.unlock{value: 10 ether}(address(executor), planner.encode(_deadline));
     }
 
-    function test_licredityExecutor_initializeLiquidity() public {
+    function initLiquidity(uint256 tokenId) public {
         uint256 positionId = licredity.openPosition();
 
         executor.approvePermit2(address(licredity), uniswapV4PositionManager);
@@ -190,12 +190,20 @@ contract licredityExecutorTest is PeripheryDeployers {
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1.1 ether));
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.ADDRESS_THIS, 1 ether));
         planner.add(Actions.UNISWAP_V4_POSITION_MANAGER_CALL, abi.encode(1 ether, positionManagerCalldata));
-        planner.add(Actions.DEPOSIT_NON_FUNGIBLE, abi.encode(positionId, false, uniswapV4PositionManager, 1));
+        planner.add(Actions.DEPOSIT_NON_FUNGIBLE, abi.encode(positionId, false, uniswapV4PositionManager, tokenId));
         licredity.unlock{value: 2.1 ether}(address(executor), planner.encode(_deadline));
     }
 
+    function test_licredityExecutor_initializeLiquidity() public {
+        initLiquidity(1);
+    }
+
+    function test_licredityExecutor_initializeLiquidityByMapTokenId() public {
+        initLiquidity(0);
+    }
+
     function test_licredityExecutor_swap() public {
-        test_licredityExecutor_initializeLiquidity();
+        initLiquidity(1);
 
         uint256 positionId = licredity.openPosition();
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
@@ -241,12 +249,12 @@ contract licredityExecutorTest is PeripheryDeployers {
     }
 
     function test_licredityExecutor_swapDebtTokenToBase() public {
-        test_licredityExecutor_initializeLiquidity();
+        initLiquidity(1);
         swapDebtTokenToBase();
     }
 
     function test_licredityExecutor_closePosition() public {
-        test_licredityExecutor_initializeLiquidity();
+        initLiquidity(1);
         swapDebtTokenToBase();
 
         uint256 positionId = licredity.openPosition();
