@@ -153,6 +153,7 @@ contract licredityExecutorTest is PeripheryDeployers {
         uint256 positionId = licredity.openPosition();
 
         executor.approvePermit2(address(licredity), uniswapV4PositionManager);
+        executor.approve(address(licredity), uniswapV4PositionManager);
 
         PositionPlan memory positionPlan = PositionPlanner.init();
         positionPlan.add(
