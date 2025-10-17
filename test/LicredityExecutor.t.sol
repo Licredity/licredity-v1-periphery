@@ -20,6 +20,7 @@ import {TickMath} from "@uniswap-v4-core/libraries/TickMath.sol";
 import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
 import {BaseERC20Mock} from "@licredity-v1-core/test/BaseERC20Mock.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
+import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
 contract licredityExecutorTest is PeripheryDeployers {
     LicredityExecutor executor;
@@ -338,6 +339,18 @@ contract licredityExecutorTest is PeripheryDeployers {
         ExecutePlan memory planner = ExecutePlanner.init();
         planner.add(Actions.EXCHANGE, abi.encode(false, ActionConstants.MSG_SENDER, 1 ether));
         licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_exchangeERC20() public {
+        IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"02");
+        deployLicredity(address(testToken), address(poolManager), address(this), "Debt TST", "DTST");
+
+        testToken.mint(address(this), 1 ether);
+        testToken.approve(address(executor), 1 ether);
+
+        ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.EXCHANGE, abi.encode(true, ActionConstants.MSG_SENDER, 1 ether));
+        licredity.unlock(address(executor), planner.encode(_deadline));
     }
 
     function test_licredityExecutor_deadlinePassed() public {
