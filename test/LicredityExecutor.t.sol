@@ -258,7 +258,20 @@ contract licredityExecutorTest is PeripheryDeployers {
         licredity.closePosition(positionId);
     }
 
-    function test_licredityExecutor_unkownAction() public {
+    function test_licredityExecutor_deadlinePassed() public {
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        vm.warp(_deadline + 1);
+        vm.expectRevert(abi.encodeWithSelector(ILicredityExecutor.DeadlinePassed.selector, _deadline));
+        licredity.unlock(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_NotSafeCallback() public {
+        vm.expectRevert(abi.encodeWithSelector(ILicredityExecutor.NotSafeCallback.selector));
+        executor.unlockCallback(hex"00");
+    }
+
+    function test_licredityExecutor_unknownAction() public {
         ExecutePlan memory planner = ExecutePlanner.init();
 
         planner.add(0xFF, abi.encode());
