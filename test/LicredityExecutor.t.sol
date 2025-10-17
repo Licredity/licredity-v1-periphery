@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {LicredityExecutor} from "src/LicredityExecutor.sol";
 import {Actions} from "src/types/Actions.sol";
 import {ActionConstants} from "src/libraries/ActionConstants.sol";
+import {ILicredityExecutor} from "src/interfaces/ILicredityExecutor.sol";
 import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {ExecutePlan, ExecutePlanner} from "./shared/ExecutePlanner.sol";
 import {SwapPlanner, SwapPlan} from "./shared/SwapPlanner.sol";
@@ -257,5 +258,14 @@ contract licredityExecutorTest is PeripheryDeployers {
         licredity.closePosition(positionId);
     }
 
+    function test_licredityExecutor_unkownAction() public {
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(0xFF, abi.encode());
+
+        vm.expectRevert(abi.encodeWithSelector(ILicredityExecutor.UnknownAction.selector, 0xFF));
+        licredity.unlock(address(executor), planner.encode(_deadline));
+    }
+    
     receive() external payable {}
 }

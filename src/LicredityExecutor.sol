@@ -7,7 +7,7 @@ import {ApproveHelper} from "./ApproveHelper.sol";
 import {Actions} from "./types/Actions.sol";
 import {CalldataDecoder} from "./libraries/CalldataDecoder.sol";
 import {ActionConstants} from "./libraries/ActionConstants.sol";
-import {ILicredityExecutor} from "./interfaces/ILicredityAccount.sol";
+import {ILicredityExecutor} from "./interfaces/ILicredityExecutor.sol";
 import {IAllowanceTransfer} from "./interfaces/external/IAllowanceTransfer.sol";
 import {IUniswapV4PositionManager} from "./interfaces/external/IUniswapV4PositionManager.sol";
 import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
