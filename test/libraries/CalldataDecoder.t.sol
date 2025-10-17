@@ -13,6 +13,23 @@ contract CalldataDecoderTest is Test {
         decoder = new MockCalldataDecoder();
     }
 
+    function test_fuzz_decodeOffset(uint256 _offset) public view {
+        bytes memory params = abi.encode(_offset);
+        uint256 offset = decoder.decodeOffset(params, 0x00);
+        assertEq(offset, _offset);
+    }
+
+    function test_decodeOffset_outOfBounds() public {
+        uint256 offset = 12345678;
+        bytes memory params = abi.encode(offset);
+        bytes memory invalidParams = _removeFinalByte(params);
+
+        assertEq(invalidParams.length, params.length - 1);
+
+        vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
+        decoder.decodeOffset(invalidParams, 0x00);
+    }
+
     function test_fuzz_decodeActionsRouterParams_withTwoOffsets(
         uint256 _offset1,
         uint256 _offset2,
@@ -307,6 +324,29 @@ contract CalldataDecoderTest is Test {
 
         vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
         decoder.decodeCurrencyAndAddress(invalidParams);
+    }
+
+    function test_fuzz_decodeCurrencyUint256AndBool(Currency currency, uint256 amount, bool payIsUser) public view {
+        bytes memory params = abi.encode(currency, amount, payIsUser);
+        (Currency decodedCurrency, uint256 decodedAmount, bool decodedPayIsUser) =
+            decoder.decodeCurrencyUint256AndBool(params);
+
+        assertEq(Currency.unwrap(decodedCurrency), Currency.unwrap(currency));
+        assertEq(decodedAmount, amount);
+        assertEq(decodedPayIsUser, payIsUser);
+    }
+
+    function test_decodeCurrencyUint256AndBool_outOutBounds() public {
+        Currency currency = Currency.wrap(address(0x12341234));
+        uint256 amount = 1 ether;
+        bool payIsUser = true;
+
+        bytes memory params = abi.encode(currency, amount, payIsUser);
+        bytes memory invalidParams = _removeFinalByte(params);
+        assertEq(invalidParams.length, params.length - 1);
+
+        vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
+        decoder.decodeCurrencyUint256AndBool(invalidParams);
     }
 
     function _removeFinalByte(bytes memory params) internal pure returns (bytes memory result) {

@@ -279,6 +279,6 @@ contract licredityExecutorTest is PeripheryDeployers {
         vm.expectRevert(abi.encodeWithSelector(ILicredityExecutor.UnknownAction.selector, 0xFF));
         licredity.unlock(address(executor), planner.encode(_deadline));
     }
-    
+
     receive() external payable {}
 }

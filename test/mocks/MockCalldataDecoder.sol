@@ -90,4 +90,12 @@ contract MockCalldataDecoder {
     {
         return CalldataDecoder.decodeCallValueAndData(params);
     }
+
+    function decodeCurrencyUint256AndBool(bytes calldata params)
+        external
+        pure
+        returns (Currency currency, uint256 amount, bool payIsUser)
+    {
+        return CalldataDecoder.decodeCurrencyUint256AndBool(params);
+    }
 }
