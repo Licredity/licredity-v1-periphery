@@ -280,6 +280,12 @@ contract licredityExecutorTest is PeripheryDeployers {
         licredity.closePosition(positionId);
     }
 
+    function test_licredityExecutor_exchange() public {
+        ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.EXCHANGE, abi.encode(false, ActionConstants.MSG_SENDER, 1 ether));
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
+    }
+
     function test_licredityExecutor_deadlinePassed() public {
         ExecutePlan memory planner = ExecutePlanner.init();
 
