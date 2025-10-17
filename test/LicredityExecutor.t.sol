@@ -126,6 +126,19 @@ contract licredityExecutorTest is PeripheryDeployers {
         licredity.unlock(address(executor), planner.encode(_deadline));
     }
 
+    function test_licredityExecutor_debtShare(uint256 share) public {
+        share = bound(share, 1e6, 9999 ether * 1e6); // 1e6 = 1 share
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.MSG_SENDER, share + 1e6));
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(positionId, share, false));
+
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
+    }
+
     function _getPosition(uint256 depositEthAmount, uint256 borrowEthAmount) internal returns (uint256 positionId) {
         positionId = licredity.openPosition();
 
