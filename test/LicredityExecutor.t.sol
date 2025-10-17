@@ -126,6 +126,32 @@ contract licredityExecutorTest is PeripheryDeployers {
         licredity.unlock(address(executor), planner.encode(_deadline));
     }
 
+    function test_licredityExecutor_debtAmount_opendelta(uint256 amount) public {
+        amount = bound(amount, 1, 10000 ether - 1);
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, amount));
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.OPEN_DELTA, false));
+
+        licredity.unlock(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_decreaseDebtAmountUsingBalance(uint256 amount) public {
+        amount = bound(amount, 1, 10000 ether - 1);
+        IERC20(address(licredity)).approve(address(executor), amount);
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, amount));
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(licredity), amount));
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(positionId, amount, true));
+
+        licredity.unlock(address(executor), planner.encode(_deadline));
+    }
+
     function test_licredityExecutor_debtShare(uint256 share) public {
         share = bound(share, 1e6, 9999 ether * 1e6); // 1e6 = 1 share
 
@@ -135,6 +161,34 @@ contract licredityExecutorTest is PeripheryDeployers {
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1 ether));
         planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.MSG_SENDER, share + 1e6));
         planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(positionId, share, false));
+
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_debtShare_opendelta(uint256 share) public {
+        share = bound(share, 1e6, 9999 ether * 1e6); // 1e6 = 1 share
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.EXCHANGE, abi.encode(false, ActionConstants.MSG_SENDER, 1 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.MSG_SENDER, share + 1e6));
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.OPEN_DELTA, false));
+
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_decreaseShareUsingBalance(uint256 share) public {
+        share = bound(share, 1e6, 9999 ether * 1e6); // 1e6 = 1 share
+        IERC20(address(licredity)).approve(address(executor), type(uint256).max);
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.ADDRESS_THIS, share + 1e6));
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, false, address(licredity), ActionConstants.OPEN_DELTA));
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(positionId, share, true));
 
         licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
     }
