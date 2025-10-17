@@ -5,6 +5,7 @@ import {IApproveHelper} from "./IApproveHelper.sol";
 import {IUnlockExecutor} from "@licredity-v1-core/interfaces/IUnlockExecutor.sol";
 
 interface ILicredityExecutor is IUnlockExecutor, IApproveHelper {
+    error CallFailure();
     error ContractLocked();
     error DeadlinePassed(uint256 deadline);
     error InputLengthMismatch();

@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {LicredityExecutor} from "src/LicredityExecutor.sol";
 import {Actions} from "src/types/Actions.sol";
 import {ActionConstants} from "src/libraries/ActionConstants.sol";
+import {ILicredityExecutor} from "src/interfaces/ILicredityExecutor.sol";
 import {ExecutePlan, ExecutePlanner} from "./shared/ExecutePlanner.sol";
 import {PeripheryDeployers} from "./shared/PeripheryDeployers.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
@@ -72,7 +73,17 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
         vm.stopPrank();
     }
 
-    function test_PoolManager_paraswap_native() public {
+    function test_Executor_callFail() public {
+        bytes memory swapCalldata = _getParaSwapCalldata("native");
+
+        ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.PENDLE_SWAP, abi.encodePacked(abi.encode(5 ether), swapCalldata));
+
+        vm.expectRevert(ILicredityExecutor.CallFailure.selector);
+        licredity.unlock(address(executor), planner.encode(_deadline));
+    }
+
+    function test_Executor_paraswap_native() public {
         bytes memory swapCalldata = _getParaSwapCalldata("native");
 
         assertEq(IERC20(address(USDC)).balanceOf(address(executor)), 0);
@@ -84,7 +95,7 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
         assertGt(IERC20(address(USDC)).balanceOf(address(executor)), 0);
     }
 
-    function test_PoolManager_paraswap_token() public {
+    function test_Executor_paraswap_token() public {
         IERC20(USDC).approve(address(executor), type(uint256).max);
         _getUsdc(address(this), 5000e6);
 
@@ -104,7 +115,7 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
         assertGt(address(executor).balance, 0);
     }
 
-    function test_PoolManager_Pendle_native() public {
+    function test_Executor_Pendle_native() public {
         bytes memory swapCalldata = _getPendleSwapCalldata("native");
 
         ExecutePlan memory planner = ExecutePlanner.init();
@@ -115,7 +126,7 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
         assertGt(IERC20(PT_USDO).balanceOf(SWAP_RECEIVER), 0);
     }
 
-    function test_PoolManager_Pendle_token() public {
+    function test_Executor_Pendle_token() public {
         IERC20(USDC).approve(address(executor), type(uint256).max);
         _getUsdc(address(this), 5000e6);
 
@@ -147,7 +158,7 @@ contract LicredityExecutorWithRouterTest is PeripheryDeployers {
         assertGt(IERC20(address(USDC)).balanceOf(SWAP_RECEIVER), 0);
     }
 
-    function test_PoolManager_Odos_token() public {
+    function test_Executor_Odos_token() public {
         IERC20(USDC).approve(address(executor), type(uint256).max);
         _getUsdc(address(this), 5000e6);
 
