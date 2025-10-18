@@ -20,6 +20,7 @@ import {TickMath} from "@uniswap-v4-core/libraries/TickMath.sol";
 import {IAllowanceTransfer} from "src/interfaces/external/IAllowanceTransfer.sol";
 import {BaseERC20Mock} from "@licredity-v1-core/test/BaseERC20Mock.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
+import {IERC20} from "@forge-std/interfaces/IERC20.sol";
 
 contract licredityExecutorTest is PeripheryDeployers {
     LicredityExecutor executor;
@@ -114,16 +115,100 @@ contract licredityExecutorTest is PeripheryDeployers {
         assertEq(nonFungibleMock.ownerOf(1), address(0xb0b));
     }
 
+    function _deposit() internal returns (uint256 positionId) {
+        positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 10 ether));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, 5 ether + 10011));
+
+        licredity.unlock{value: 10 ether}(address(executor), planner.encode(_deadline));
+    }
+
     function test_licredityExecutor_debtAmount(uint256 amount) public {
+        amount = bound(amount, 1, 1000 ether - 1);
+
+        _deposit();
+        oracleMock.setQuotePrice(1.1 ether);
+        skip(10000);
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1 ether));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, amount));
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(positionId, amount, false));
+
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline + 10001));
+    }
+
+    function test_licredityExecutor_debtAmount_opendelta(uint256 amount) public {
         amount = bound(amount, 1, 10000 ether - 1);
 
         uint256 positionId = licredity.openPosition();
         ExecutePlan memory planner = ExecutePlanner.init();
 
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, amount));
-        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(positionId, amount, false));
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.OPEN_DELTA, false));
 
         licredity.unlock(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_decreaseDebtAmountUsingBalance(uint256 amount) public {
+        amount = bound(amount, 1, 10000 ether - 1);
+        IERC20(address(licredity)).approve(address(executor), amount);
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, amount));
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(licredity), amount));
+        planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(positionId, amount, true));
+
+        licredity.unlock(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_debtShare(uint256 share) public {
+        share = bound(share, 1e6, 9999 ether * 1e6); // 1e6 = 1 share
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.MSG_SENDER, share + 1e6));
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(positionId, share, false));
+
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_debtShare_opendelta(uint256 share) public {
+        share = bound(share, 1e6, 9999 ether * 1e6); // 1e6 = 1 share
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.EXCHANGE, abi.encode(false, ActionConstants.MSG_SENDER, 1 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.MSG_SENDER, share + 1e6));
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.OPEN_DELTA, false));
+
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_decreaseShareUsingBalance(uint256 share) public {
+        share = bound(share, 1e6, 9999 ether * 1e6); // 1e6 = 1 share
+        IERC20(address(licredity)).approve(address(executor), type(uint256).max);
+
+        uint256 positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1 ether));
+        planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.ADDRESS_THIS, share + 1e6));
+        planner.add(
+            Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, false, address(licredity), ActionConstants.OPEN_DELTA)
+        );
+        planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(positionId, share, true));
+
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
     }
 
     function _getPosition(uint256 depositEthAmount, uint256 borrowEthAmount) internal returns (uint256 positionId) {
@@ -149,7 +234,7 @@ contract licredityExecutorTest is PeripheryDeployers {
         licredity.unlock{value: 10 ether}(address(executor), planner.encode(_deadline));
     }
 
-    function test_licredityExecutor_initializeLiquidity() public {
+    function initLiquidity(uint256 tokenId) public {
         uint256 positionId = licredity.openPosition();
 
         executor.approvePermit2(address(licredity), uniswapV4PositionManager);
@@ -177,12 +262,20 @@ contract licredityExecutorTest is PeripheryDeployers {
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1.1 ether));
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.ADDRESS_THIS, 1 ether));
         planner.add(Actions.UNISWAP_V4_POSITION_MANAGER_CALL, abi.encode(1 ether, positionManagerCalldata));
-        planner.add(Actions.DEPOSIT_NON_FUNGIBLE, abi.encode(positionId, false, uniswapV4PositionManager, 1));
+        planner.add(Actions.DEPOSIT_NON_FUNGIBLE, abi.encode(positionId, false, uniswapV4PositionManager, tokenId));
         licredity.unlock{value: 2.1 ether}(address(executor), planner.encode(_deadline));
     }
 
+    function test_licredityExecutor_initializeLiquidity() public {
+        initLiquidity(1);
+    }
+
+    function test_licredityExecutor_initializeLiquidityByMapTokenId() public {
+        initLiquidity(0);
+    }
+
     function test_licredityExecutor_swap() public {
-        test_licredityExecutor_initializeLiquidity();
+        initLiquidity(1);
 
         uint256 positionId = licredity.openPosition();
         IPoolManager.SwapParams memory swapParam = IPoolManager.SwapParams({
@@ -228,12 +321,12 @@ contract licredityExecutorTest is PeripheryDeployers {
     }
 
     function test_licredityExecutor_swapDebtTokenToBase() public {
-        test_licredityExecutor_initializeLiquidity();
+        initLiquidity(1);
         swapDebtTokenToBase();
     }
 
     function test_licredityExecutor_closePosition() public {
-        test_licredityExecutor_initializeLiquidity();
+        initLiquidity(1);
         swapDebtTokenToBase();
 
         uint256 positionId = licredity.openPosition();
@@ -257,6 +350,24 @@ contract licredityExecutorTest is PeripheryDeployers {
         licredity.unlock{value: 0.5 ether}(address(executor), planner.encode(_deadline));
 
         licredity.closePosition(positionId);
+    }
+
+    function test_licredityExecutor_exchange() public {
+        ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.EXCHANGE, abi.encode(false, ActionConstants.MSG_SENDER, 1 ether));
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
+    }
+
+    function test_licredityExecutor_exchangeERC20() public {
+        IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"02");
+        deployLicredity(address(testToken), address(poolManager), address(this), "Debt TST", "DTST");
+
+        testToken.mint(address(this), 1 ether);
+        testToken.approve(address(executor), 1 ether);
+
+        ExecutePlan memory planner = ExecutePlanner.init();
+        planner.add(Actions.EXCHANGE, abi.encode(true, ActionConstants.MSG_SENDER, 1 ether));
+        licredity.unlock(address(executor), planner.encode(_deadline));
     }
 
     function test_licredityExecutor_deadlinePassed() public {
