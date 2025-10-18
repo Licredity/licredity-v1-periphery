@@ -203,7 +203,9 @@ contract licredityExecutorTest is PeripheryDeployers {
 
         planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1 ether));
         planner.add(Actions.INCREASE_DEBT_SHARE, abi.encode(positionId, ActionConstants.ADDRESS_THIS, share + 1e6));
-        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, false, address(licredity), ActionConstants.OPEN_DELTA));
+        planner.add(
+            Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, false, address(licredity), ActionConstants.OPEN_DELTA)
+        );
         planner.add(Actions.DECREASE_DEBT_SHARE, abi.encode(positionId, share, true));
 
         licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline));
