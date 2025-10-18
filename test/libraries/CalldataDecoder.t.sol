@@ -13,10 +13,51 @@ contract CalldataDecoderTest is Test {
         decoder = new MockCalldataDecoder();
     }
 
-    function test_fuzz_decodeActionsRouterParams(bytes memory _actions, bytes[] memory _actionParams) public view {
-        bytes memory params = abi.encode(_actions, _actionParams);
-        (bytes memory actions, bytes[] memory actionParams) = decoder.decodeActionsRouterParams(params);
+    function test_fuzz_decodeOffset(uint256 _offset) public view {
+        bytes memory params = abi.encode(_offset);
+        uint256 offset = decoder.decodeOffset(params, 0x00);
+        assertEq(offset, _offset);
+    }
 
+    function test_decodeOffset_outOfBounds() public {
+        uint256 offset = 12345678;
+        bytes memory params = abi.encode(offset);
+        bytes memory invalidParams = _removeFinalByte(params);
+
+        assertEq(invalidParams.length, params.length - 1);
+
+        vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
+        decoder.decodeOffset(invalidParams, 0x00);
+    }
+
+    function test_fuzz_decodeActionsRouterParams_withTwoOffsets(
+        uint256 _offset1,
+        uint256 _offset2,
+        bytes memory _actions,
+        bytes[] memory _actionParams
+    ) public view {
+        // create actions and parameters
+        bytes memory params = abi.encode(_offset1, _offset2, _actions, _actionParams);
+        uint256 offset1 = decoder.decodeOffset(params, 0x00);
+        uint256 offset2 = decoder.decodeOffset(params, 0x20);
+        assertEq(offset1, _offset1);
+        assertEq(offset2, _offset2);
+
+        (bytes memory actions, bytes[] memory actionParams) = decoder.decodeActionsRouterParams(0x40, params);
+
+        assertEq(actions, _actions);
+        assertEq(actionParams, _actionParams);
+    }
+
+    function test_fuzz_decodeActionsRouterParams(uint256 _deadline, bytes memory _actions, bytes[] memory _actionParams)
+        public
+        view
+    {
+        bytes memory params = abi.encode(_deadline, _actions, _actionParams);
+        uint256 deadline = decoder.decodeOffset(params, 0x00);
+        (bytes memory actions, bytes[] memory actionParams) = decoder.decodeActionsRouterParams(0x20, params);
+
+        assertEq(deadline, _deadline);
         assertEq(actions, _actions);
         assertEq(actionParams, _actionParams);
     }
@@ -37,17 +78,20 @@ contract CalldataDecoderTest is Test {
         assertEq(invalidParams.length, params.length - 1);
 
         vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
-        decoder.decodeActionsRouterParams(invalidParams);
+        decoder.decodeActionsRouterParams(0x00, invalidParams);
     }
 
     function test_decodeActionsRouterParams_emptyParams() public view {
         // create actions and parameters
+        uint256 _deadline;
         bytes memory _actions = hex"";
         bytes[] memory _actionParams = new bytes[](0);
 
-        bytes memory params = abi.encode(_actions, _actionParams);
+        bytes memory params = abi.encode(_deadline, _actions, _actionParams);
+        uint256 deadline = decoder.decodeOffset(params, 0x00);
+        (bytes memory actions, bytes[] memory actionParams) = decoder.decodeActionsRouterParams(0x20, params);
 
-        (bytes memory actions, bytes[] memory actionParams) = decoder.decodeActionsRouterParams(params);
+        assertEq(deadline, _deadline);
         assertEq(actions, _actions);
         assertEq(actionParams.length, _actionParams.length);
         assertEq(actionParams.length, 0);
@@ -83,7 +127,27 @@ contract CalldataDecoderTest is Test {
         assertEq(positionParams.length, 0);
     }
 
-    function test_fuzz_decodeDeposit(bool _boolean, address _token, uint256 _amount) external view {
+    function test_fuzz_decodeAddressAndAddress(address _token, address _spender) external view {
+        bytes memory params = abi.encode(_token, _spender);
+        (address token, address spender) = decoder.decodeAddressAndAddress(params);
+
+        assertEq(token, _token);
+        assertEq(spender, _spender);
+    }
+
+    function test_decodeAddressAndAddress_outOfBounds() external {
+        address token = address(0x1);
+        address spender = address(0x1);
+
+        bytes memory params = abi.encode(token, spender);
+        bytes memory invalidParams = _removeFinalByte(params);
+
+        assertEq(invalidParams.length, params.length - 1);
+        vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
+        decoder.decodeAddressAndAddress(invalidParams);
+    }
+
+    function test_fuzz_decodeBoolAddressAndUint256(bool _boolean, address _token, uint256 _amount) external view {
         bytes memory params = abi.encode(_boolean, _token, _amount);
         (bool boolean, address token, uint256 amount) = decoder.decodeBoolAddressAndUint256(params);
 
@@ -92,7 +156,7 @@ contract CalldataDecoderTest is Test {
         assertEq(amount, _amount);
     }
 
-    function test_decodeDeposit_outOfBounds() external {
+    function test_decodeBoolAddressAndUint256_outOfBounds() external {
         bool boolean = true;
         address token = address(0x1);
         uint256 amount = 1 ether;
@@ -105,10 +169,37 @@ contract CalldataDecoderTest is Test {
         decoder.decodeBoolAddressAndUint256(invalidParams);
     }
 
-    function test_fuzz_decodeWithdraw(address _recipient, address _token, uint256 _amount) external view {
-        bytes memory params = abi.encode(_recipient, _token, _amount);
-        (address recipient, address token, uint256 amount) = decoder.decodeWithdraw(params);
+    function test_fuzz_decodeBoolUint256AddressAndUint256(uint256 _id, bool _boolean, address _token, uint256 _amount)
+        external
+        view
+    {
+        bytes memory params = abi.encode(_id, _boolean, _token, _amount);
+        (uint256 id, bool boolean, address token, uint256 amount) = decoder.decodeBoolUint256AddressAndUint256(params);
 
+        assertEq(id, _id);
+        assertEq(boolean, _boolean);
+        assertEq(token, _token);
+        assertEq(amount, _amount);
+    }
+
+    function test_decodeBoolUint256AddressAndUint256_outOfBounds() external {
+        bool boolean = true;
+        address token = address(0x1);
+        uint256 amount = 1 ether;
+
+        bytes memory params = abi.encode(boolean, token, amount);
+        bytes memory invalidParams = _removeFinalByte(params);
+
+        assertEq(invalidParams.length, params.length - 1);
+        vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
+        decoder.decodeBoolUint256AddressAndUint256(invalidParams);
+    }
+
+    function test_fuzz_decodeWithdraw(uint256 _id, address _recipient, address _token, uint256 _amount) external view {
+        bytes memory params = abi.encode(_id, _recipient, _token, _amount);
+        (uint256 id, address recipient, address token, uint256 amount) = decoder.decodeWithdraw(params);
+
+        assertEq(id, _id);
         assertEq(recipient, _recipient);
         assertEq(token, _token);
         assertEq(amount, _amount);
@@ -127,10 +218,11 @@ contract CalldataDecoderTest is Test {
         decoder.decodeWithdraw(invalidParams);
     }
 
-    function test_fuzz_decodeIncreaseDebt(address _recipient, uint256 _amount) external view {
-        bytes memory params = abi.encode(_recipient, _amount);
-        (address recipient, uint256 amount) = decoder.decodeIncreaseDebt(params);
+    function test_fuzz_decodeIncreaseDebt(uint256 _id, address _recipient, uint256 _amount) external view {
+        bytes memory params = abi.encode(_id, _recipient, _amount);
+        (uint256 id, address recipient, uint256 amount) = decoder.decodeIncreaseDebt(params);
 
+        assertEq(id, _id);
         assertEq(recipient, _recipient);
         assertEq(amount, _amount);
     }
@@ -147,11 +239,11 @@ contract CalldataDecoderTest is Test {
         decoder.decodeIncreaseDebt(invalidParams);
     }
 
-    function test_fuzz_decodeDecreaseDebt(bool _boolean, uint256 _amount, bool _useBalance) external view {
-        bytes memory params = abi.encode(_boolean, _amount, _useBalance);
-        (bool boolean, uint256 amount, bool useBalance) = decoder.decodeDecreaseDebt(params);
+    function test_fuzz_decodeDecreaseDebt(uint256 _id, uint256 _amount, bool _useBalance) external view {
+        bytes memory params = abi.encode(_id, _amount, _useBalance);
+        (uint256 id, uint256 amount, bool useBalance) = decoder.decodeDecreaseDebt(params);
 
-        assertEq(boolean, _boolean);
+        assertEq(id, _id);
         assertEq(amount, _amount);
         assertEq(useBalance, _useBalance);
     }
@@ -169,25 +261,30 @@ contract CalldataDecoderTest is Test {
         decoder.decodeDecreaseDebt(invalidParams);
     }
 
-    function test_fuzz_decodePositionId(uint256 _tokenId) external view {
-        bytes memory params = abi.encode(_tokenId);
-        uint256 tokenId = decoder.decodePositionId(params);
+    function test_fuzz_decodeSeizedPosition(uint256 _tokenId, address _recipient) external view {
+        bytes memory params = abi.encode(_tokenId, _recipient);
+        (uint256 tokenId, address recipient) = decoder.decodeSeizedPosition(params);
 
         assertEq(tokenId, _tokenId);
+        assertEq(recipient, _recipient);
     }
 
-    function test_decodePositionId_outOfBounds() external {
+    function test_decodeSeizedPosition_outOfBounds() external {
         uint256 tokenId = 1000;
+        address recipient = address(0x1);
 
-        bytes memory params = abi.encode(tokenId);
+        bytes memory params = abi.encode(tokenId, recipient);
         bytes memory invalidParams = _removeFinalByte(params);
 
         assertEq(invalidParams.length, params.length - 1);
         vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
-        decoder.decodePositionId(invalidParams);
+        decoder.decodeSeizedPosition(invalidParams);
     }
 
-    function test_fuzz_decodeCurrencyAddressAndUint256(Currency _currency, address _addr, uint256 _amount) public view {
+    function test_fuzz_decodeCurrencyAddressAndUint256(Currency _currency, address _addr, uint256 _amount)
+        public
+        view
+    {
         bytes memory params = abi.encode(_currency, _addr, _amount);
         (Currency currency, address addr, uint256 amount) = decoder.decodeCurrencyAddressAndUint256(params);
 
@@ -227,6 +324,29 @@ contract CalldataDecoderTest is Test {
 
         vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
         decoder.decodeCurrencyAndAddress(invalidParams);
+    }
+
+    function test_fuzz_decodeCurrencyUint256AndBool(Currency currency, uint256 amount, bool payIsUser) public view {
+        bytes memory params = abi.encode(currency, amount, payIsUser);
+        (Currency decodedCurrency, uint256 decodedAmount, bool decodedPayIsUser) =
+            decoder.decodeCurrencyUint256AndBool(params);
+
+        assertEq(Currency.unwrap(decodedCurrency), Currency.unwrap(currency));
+        assertEq(decodedAmount, amount);
+        assertEq(decodedPayIsUser, payIsUser);
+    }
+
+    function test_decodeCurrencyUint256AndBool_outOutBounds() public {
+        Currency currency = Currency.wrap(address(0x12341234));
+        uint256 amount = 1 ether;
+        bool payIsUser = true;
+
+        bytes memory params = abi.encode(currency, amount, payIsUser);
+        bytes memory invalidParams = _removeFinalByte(params);
+        assertEq(invalidParams.length, params.length - 1);
+
+        vm.expectRevert(CalldataDecoder.SliceOutOfBounds.selector);
+        decoder.decodeCurrencyUint256AndBool(invalidParams);
     }
 
     function _removeFinalByte(bytes memory params) internal pure returns (bytes memory result) {

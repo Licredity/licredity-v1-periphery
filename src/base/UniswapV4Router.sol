@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {ActionConstants} from "../libraries/ActionConstants.sol";
+import {Fungible} from "@licredity-v1-core/types/Fungible.sol";
 import {Currency} from "@uniswap-v4-core/types/Currency.sol";
 import {IPoolManager} from "@uniswap-v4-core/interfaces/IPoolManager.sol";
 import {TransientStateLibrary} from "@uniswap-v4-core/libraries/TransientStateLibrary.sol";
@@ -48,15 +49,7 @@ abstract contract UniswapV4Router {
             calldatacopy(add(fmp, 0x80), positionCalldata.offset, positionParamsLength)
 
             let success :=
-                call(
-                    gas(),
-                    _positionManager,
-                    positionValue,
-                    add(fmp, 0x1c),
-                    add(positionParamsLength, 0x64),
-                    0x00,
-                    0x00
-                )
+                call(gas(), _positionManager, positionValue, add(fmp, 0x1c), add(positionParamsLength, 0x64), 0x00, 0x00)
 
             if iszero(success) {
                 mstore(0x00, 0x0cb6ac70) // `PositionManagerCallFail()`
@@ -126,7 +119,7 @@ abstract contract UniswapV4Router {
         if (currency.isAddressZero()) {
             POOL_MANAGER.settle{value: amount}();
         } else {
-            _pay(currency, payer, address(POOL_MANAGER), amount);
+            _pay(Fungible.wrap(Currency.unwrap(currency)), payer, address(POOL_MANAGER), amount);
             POOL_MANAGER.settle();
         }
     }
@@ -142,11 +135,11 @@ abstract contract UniswapV4Router {
     }
 
     /// @notice Abstract function for contracts to implement paying tokens to the poolManager
-    /// @param token The token to settle. This is known not to be the native currency
+    /// @param fungible The token to settle. This is known not to be the native currency
     /// @param payer The address who should pay tokens
     /// @param recipient The address who should receive tokens
     /// @param amount The number of tokens to send
-    function _pay(Currency token, address payer, address recipient, uint256 amount) internal virtual;
+    function _pay(Fungible fungible, address payer, address recipient, uint256 amount) internal virtual;
 
     /// @notice Obtain the full amount owed by this contract (negative delta)
     /// @param currency Currency to get the delta for

@@ -1,17 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-struct ActionsData {
-    uint256 tokenId;
-    bytes unlockData;
-}
-
-struct UniswapV4ActionsData {
-    uint256 positionCallValue;
-    bytes positionCalldata;
-    bytes[] swapParams;
-}
-
 library Actions {
     uint256 public constant DEPOSIT_FUNGIBLE = 0x00;
     uint256 public constant DEPOSIT_NON_FUNGIBLE = 0x01;
@@ -24,8 +13,6 @@ library Actions {
     uint256 public constant SEIZE = 0x08;
     uint256 public constant EXCHANGE = 0x09;
 
-    uint256 public constant SWITCH = 0x0a;
-
     uint256 public constant UNISWAP_V4_POSITION_MANAGER_CALL = 0x0b;
     uint256 public constant UNISWAP_V4_POOL_MANAGER_CALL = 0x0c;
 
@@ -34,5 +21,9 @@ library Actions {
     uint256 public constant UNISWAP_V4_SETTLE = 0x0f;
     uint256 public constant UNISWAP_V4_SWEEP = 0x10;
 
-    uint256 public constant DYN_CALL = 0x11;
+    uint256 public constant APPROVE = 0x11;
+
+    uint256 public constant PARA_SWAP = 0x12;
+    uint256 public constant ODOS_SWAP = 0x13;
+    uint256 public constant PENDLE_SWAP = 0x14;
 }

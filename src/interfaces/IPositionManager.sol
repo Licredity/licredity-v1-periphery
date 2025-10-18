@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.24;
 
-import {ActionsData} from "../types/Actions.sol";
-import {IPositionManagerConfig} from "./IPositionManagerConfig.sol";
+import {IApproveHelper} from "./IApproveHelper.sol";
 import {ILicredity} from "@licredity-v1-core/interfaces/ILicredity.sol";
 
-interface IPositionManager is IPositionManagerConfig {
+interface IPositionManager is IApproveHelper {
     error ContractLocked();
     error DeadlinePassed(uint256 deadline);
     error MarketNotWhitelisted();
@@ -44,9 +43,4 @@ interface IPositionManager is IPositionManagerConfig {
     /// @param tokenId The position tokenId
     /// @param shares The amount debt share to repay
     function decreaseDebtShare(uint256 tokenId, uint256 shares) external;
-
-    /// @notice Executes encoded commands along with provided inputs. Reverts if deadline has expired.
-    /// @param inputs The encoded commands
-    /// @param deadline The deadline by which the transaction must be executed
-    function execute(ActionsData[] calldata inputs, uint256 deadline) external payable;
 }
