@@ -44,7 +44,7 @@ abstract contract UniswapV4Router {
             mstore(add(fmp, 0x20), 0x40)
             mstore(add(fmp, 0x40), timestamp())
 
-            let positionParamsLength := positionCalldata.length
+            let positionParamsLength := and(add(positionCalldata.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN)
             mstore(add(fmp, 0x60), positionParamsLength)
             calldatacopy(add(fmp, 0x80), positionCalldata.offset, positionParamsLength)
 
@@ -55,6 +55,8 @@ abstract contract UniswapV4Router {
                 mstore(0x00, 0x0cb6ac70) // `PositionManagerCallFail()`
                 revert(0x1c, 0x04)
             }
+
+            mstore(0x40, add(fmp, add(positionParamsLength, 0x80)))
         }
     }
 
@@ -70,15 +72,18 @@ abstract contract UniswapV4Router {
             // 0x60: beginning of unlockData
             mstore(fmp, UNLOCK_SELECTOR)
             mstore(add(fmp, 0x20), 0x20)
-            mstore(add(fmp, 0x40), unlockData.length)
-            calldatacopy(add(fmp, 0x60), unlockData.offset, unlockData.length)
+            let unlockDataLength := and(add(unlockData.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN)
+            mstore(add(fmp, 0x40), unlockDataLength)
+            calldatacopy(add(fmp, 0x60), unlockData.offset, unlockDataLength)
 
-            let success := call(gas(), _poolManager, 0, add(fmp, 0x1c), add(unlockData.length, 0x44), 0x00, 0x00)
+            let success := call(gas(), _poolManager, 0, add(fmp, 0x1c), add(unlockDataLength, 0x44), 0x00, 0x00)
 
             if iszero(success) {
                 mstore(0x00, 0x1458ce24) // `UniswapV4UnlockFail()`
                 revert(0x1c, 0x04)
             }
+
+            mstore(0x40, add(fmp, add(unlockDataLength, 0x60)))
         }
     }
 
@@ -86,17 +91,22 @@ abstract contract UniswapV4Router {
         IPoolManager _poolManager = POOL_MANAGER;
 
         assembly ("memory-safe") {
+            // 0x00: selector
+            // 0x20: begin swapCalldata
             let fmp := mload(0x40)
             mstore(fmp, SWAP_SELECTOR)
 
-            calldatacopy(add(fmp, 0x20), swapCalldata.offset, swapCalldata.length)
+            let swapDataLength := and(add(swapCalldata.length, 0x1f), OFFSET_OR_LENGTH_MASK_AND_WORD_ALIGN)
+            calldatacopy(add(fmp, 0x20), swapCalldata.offset, swapDataLength)
 
-            let success := call(gas(), _poolManager, 0, add(fmp, 0x1c), add(swapCalldata.length, 0x04), 0x00, 0x00)
+            let success := call(gas(), _poolManager, 0, add(fmp, 0x1c), add(swapDataLength, 0x04), 0x00, 0x00)
 
             if iszero(success) {
                 mstore(0x00, 0x2fd8bc31) // `UniswapV4SwapFail()`
                 revert(0x1c, 0x04)
             }
+
+            mstore(0x40, add(fmp, add(swapDataLength, 0x20)))
         }
     }
 
@@ -164,9 +174,7 @@ abstract contract UniswapV4Router {
 
     /// @notice Calculates the amount for a settle action
     function _mapSettleAmount(uint256 amount, Currency currency) internal view returns (uint256) {
-        if (amount == ActionConstants.CONTRACT_BALANCE) {
-            return currency.balanceOfSelf();
-        } else if (amount == ActionConstants.OPEN_DELTA) {
+        if (amount == ActionConstants.OPEN_DELTA) {
             return _getFullDebt(currency);
         } else {
             return amount;
