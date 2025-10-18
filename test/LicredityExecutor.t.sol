@@ -37,7 +37,7 @@ contract licredityExecutorTest is PeripheryDeployers {
 
     function setUp() public {
         IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"01");
-        deployLicredity(address(0), address(poolManager), address(this), "Debt ETH", "DETH");
+        deployLicredity(address(0), address(poolManager), 365, address(this), "Debt ETH", "DETH");
         licredity.setDebtLimit(10000 ether);
 
         deployAndSetOracleMock();
@@ -360,7 +360,7 @@ contract licredityExecutorTest is PeripheryDeployers {
 
     function test_licredityExecutor_exchangeERC20() public {
         IPoolManager poolManager = deployUniswapV4Core(address(0xabcd), hex"02");
-        deployLicredity(address(testToken), address(poolManager), address(this), "Debt TST", "DTST");
+        deployLicredity(address(testToken), address(poolManager), 365, address(this), "Debt TST", "DTST");
 
         testToken.mint(address(this), 1 ether);
         testToken.approve(address(executor), 1 ether);

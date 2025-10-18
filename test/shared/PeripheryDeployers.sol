@@ -64,6 +64,7 @@ contract PeripheryDeployers is Test {
     function deployLicredity(
         address baseToken,
         address poolManager,
+        uint256 sensitivity,
         address governor,
         string memory name,
         string memory symbol
@@ -71,7 +72,7 @@ contract PeripheryDeployers is Test {
         address payable mockLicredity = payable(address(0xFb46d30c9B3ACc61d714D167179748FD01E09aC0));
         vm.label(mockLicredity, "Licredity");
 
-        bytes memory args = abi.encode(baseToken, poolManager, name, symbol, governor);
+        bytes memory args = abi.encode(poolManager, baseToken, name, symbol, sensitivity, governor);
         deployCodeTo("Licredity.sol", args, mockLicredity);
 
         licredity = Licredity(mockLicredity);
