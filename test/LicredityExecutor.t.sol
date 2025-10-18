@@ -115,16 +115,31 @@ contract licredityExecutorTest is PeripheryDeployers {
         assertEq(nonFungibleMock.ownerOf(1), address(0xb0b));
     }
 
+    function _deposit() internal returns (uint256 positionId) {
+        positionId = licredity.openPosition();
+        ExecutePlan memory planner = ExecutePlanner.init();
+
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 10 ether));
+        planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, 5 ether + 10011));
+
+        licredity.unlock{value: 10 ether}(address(executor), planner.encode(_deadline));
+    }
+
     function test_licredityExecutor_debtAmount(uint256 amount) public {
-        amount = bound(amount, 1, 10000 ether - 1);
+        amount = bound(amount, 1, 1000 ether - 1);
+
+        _deposit();
+        oracleMock.setQuotePrice(1.1 ether);
+        skip(10000);
 
         uint256 positionId = licredity.openPosition();
         ExecutePlan memory planner = ExecutePlanner.init();
 
+        planner.add(Actions.DEPOSIT_FUNGIBLE, abi.encode(positionId, true, address(0), 1 ether));
         planner.add(Actions.INCREASE_DEBT_AMOUNT, abi.encode(positionId, ActionConstants.MSG_SENDER, amount));
         planner.add(Actions.DECREASE_DEBT_AMOUNT, abi.encode(positionId, amount, false));
 
-        licredity.unlock(address(executor), planner.encode(_deadline));
+        licredity.unlock{value: 1 ether}(address(executor), planner.encode(_deadline + 10001));
     }
 
     function test_licredityExecutor_debtAmount_opendelta(uint256 amount) public {
